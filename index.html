@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Fee Comparator</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Platform Fee Comparison</h1>
+        <p class="instruction">Complete each step to compare platform fees across different products</p>
+
+        <div class="step-container" id="step1">
+            <div class="step-title">
+                <div class="step-number">1</div>
+                <div class="step-label">Select Number of Accounts</div>
+            </div>
+            <div class="grid-container">
+                <div class="input-group">
+                    <label for="idps-account-count">Number of IDPS Accounts</label>
+                    <select id="idps-account-count" class="input-field">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="super-account-count">Number of Super/Pension Accounts</label>
+                    <select id="super-account-count" class="input-field">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+            </div>
+            <button id="update-accounts-btn" class="toggle-button" style="margin-top: 1rem;">
+                Update Accounts
+            </button>
+        </div>
+
+        <div class="step-container" id="step2">
+            <div class="step-title">
+                <div class="step-number">2</div>
+                <div class="step-label">Enter Account Balances</div>
+            </div>
+            
+            <div id="idps-section" style="display: none;">
+                <h3>IDPS Accounts</h3>
+                <div class="scrollable-table">
+                    <table id="idps-accounts-table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Total Account Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- IDPS accounts will be added dynamically -->
+                        </tbody>
+                        <tfoot id="idps-totals" style="display: none;">
+                            <tr>
+                                <td><strong>Total IDPS</strong></td>
+                                <td id="idps-total-balance"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="super-section" style="display: none;">
+                <h3>Super/Pension Accounts</h3>
+                <div class="scrollable-table">
+                    <table id="super-accounts-table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Total Account Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Super accounts will be added dynamically -->
+                        </tbody>
+                        <tfoot id="super-totals" style="display: none;">
+                            <tr>
+                                <td><strong>Total Super/Pension</strong></td>
+                                <td id="super-total-balance"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h2>Fee Comparison Results</h2>
+            
+            <div class="total-balance-display">
+                <h3 style="margin-top: 0; margin-bottom: 0.5rem;">Total Account Balance</h3>
+                <div id="total-balance-amount" class="total-balance-amount">$0.00</div>
+            </div>
+            
+            <div class="step-container" style="margin-bottom: 1.5rem;">
+                <div class="input-group">
+                    <label for="set-current-platform">Set Current Platform(s)</label>
+                    <select id="set-current-platform" class="input-field">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div id="current-platform-selector" class="hidden" style="margin-top: 1rem;">
+                    <div id="platform-checkboxes">
+                        <!-- Platform checkboxes will be added dynamically -->
+                    </div>
+                    <button id="save-current-platforms" class="toggle-button" style="margin-top: 1rem;">
+                        Save Current Platform(s)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="scrollable-table">
+                <table class="fee-table">
+                    <thead>
+                        <tr>
+                            <th>Platform</th>
+                            <th>Admin Fee ($)</th>
+                            <th>Expense Recovery ($)</th>
+                            <th>Total Fee ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fee-comparison-table">
+                        <!-- Fee comparison rows will be dynamically generated here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button id="download-comparison" class="download-btn">
+                <svg class="download-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download Comparison
+            </button>
+        </div>
+        
+        <div class="step-container" id="step3">
+            <div class="step-title">
+                <div class="step-number">3</div>
+                <div class="step-label">Client Platform Preference</div>
+            </div>
+            
+            <div class="preference-section">
+                <div class="input-group">
+                    <label for="platform-preference">Select Client Preference</label>
+                    <select id="platform-preference" class="input-field">
+                        <option value="standard">Standard Online Platform</option>
+                        <option value="no-online">Do not want online platform</option>
+                        <option value="custom">Custom preference</option>
+                    </select>
+                </div>
+                <div id="custom-text-container" class="hidden">
+                    <label for="custom-preference-text">Custom Preference Details</label>
+                    <textarea id="custom-preference-text" class="custom-text-area" placeholder="Enter custom platform preference details"></textarea>
+                </div>
+                <div id="no-online-text" class="hidden">
+                    <p style="color: var(--text-secondary);">The client has expressed a desire to use a simple platform without online complexity</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="note">
+            <p>* CFS Edge Investment charges a tiered admin fee: 0.25% p.a. on first $500,000, 0.10% p.a. on $500,000-$1,000,000, 0.05% p.a. on $1,000,000-$3,000,000, and nil on amounts above $3,000,000.</p>
+            <p>* CFS Edge Super charges a tiered admin fee: 0.28% p.a. on first $500,000, 0.13% p.a. on $500,000-$1,000,000, 0.05% p.a. on $1,000,000-$3,000,000, and nil on amounts above $3,000,000.</p>
+            <p>* BT Panorama admin fees aggregated across all accounts. Compact Menu has a $180 flat fee plus tiered percentage. Full Menu has $540 flat fee plus tiered percentage.</p>
+            <p>* Portfolio Solutions Super/Pension has a minimum fee of $45 per month per account.</p>
+            <p>* Centric One is only available for Superannuation accounts.</p>
+        </div>
+    </div>
+</body>
+</html>
