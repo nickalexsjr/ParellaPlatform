@@ -607,7 +607,7 @@ function downloadComparison() {
     }
 }
 
-// Download comparison as PDF - Fixed version
+// Download comparison as PDF - Direct jsPDF implementation
 function downloadPDF() {
     try {
         // Show loading indication on the button
@@ -615,511 +615,318 @@ function downloadPDF() {
         const originalText = downloadPdfBtn.innerHTML;
         downloadPdfBtn.innerHTML = 'Generating PDF...';
         downloadPdfBtn.disabled = true;
+
+        // Create new jsPDF instance
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        // Set font styles
+        doc.setFont('helvetica');
         
-        // Create a new div for the PDF content
-        const pdfContent = document.createElement('div');
+        // Add title
+        doc.setFontSize(20);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Platform Fee Comparison Report', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
         
-        // Set PDF styles - explicit styling with nothing inherited
-        pdfContent.style.width = '100%';
-        pdfContent.style.backgroundColor = '#ffffff';
-        pdfContent.style.color = '#000000';
-        pdfContent.style.fontFamily = 'Arial, sans-serif';
-        pdfContent.style.padding = '20px';
-        pdfContent.style.boxSizing = 'border-box';
-        pdfContent.style.position = 'relative';
+        // Add subtitle
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Financial Planning Analysis', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
         
-        // Add title section
-        const titleDiv = document.createElement('div');
-        titleDiv.style.marginBottom = '20px';
-        titleDiv.style.textAlign = 'center';
-        titleDiv.style.borderBottom = '2px solid #4472C4';
-        titleDiv.style.paddingBottom = '10px';
+        // Add horizontal line
+        doc.setDrawColor(68, 114, 196); // #4472C4
+        doc.setLineWidth(0.5);
+        doc.line(20, 32, doc.internal.pageSize.getWidth() - 20, 32);
         
-        const titleText = document.createElement('h1');
-        titleText.textContent = 'Platform Fee Comparison Report';
-        titleText.style.margin = '0 0 5px 0';
-        titleText.style.padding = '0';
-        titleText.style.fontSize = '24px';
-        titleText.style.fontWeight = 'bold';
-        titleText.style.color = '#333333';
-        
-        titleDiv.appendChild(titleText);
-        pdfContent.appendChild(titleDiv);
-        
-        // --- ACCOUNT DETAILS SECTION ---
+        // Add date
+        const currentDate = new Date();
+        doc.setFontSize(10);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Report generated: ${currentDate.toLocaleDateString()} ${currentDate.toLocaleTimeString()}`, 
+                    doc.internal.pageSize.getWidth() - 20, 38, { align: 'right' });
         
         // Get account data
         let idpsAccounts = accountDetails.idps.filter(a => a.balance > 0);
         let superAccounts = accountDetails.super.filter(a => a.balance > 0);
         const totalBalance = [...idpsAccounts, ...superAccounts].reduce((sum, account) => sum + account.balance, 0);
         
-        // Add total balance section
-        const balanceSection = document.createElement('div');
-        balanceSection.style.marginBottom = '20px';
-        balanceSection.style.padding = '15px';
-        balanceSection.style.backgroundColor = '#f5f5f5';
-        balanceSection.style.borderRadius = '5px';
-        balanceSection.style.textAlign = 'center';
+        // Add total balance
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(20, 45, doc.internal.pageSize.getWidth() - 40, 20, 3, 3, 'F');
         
-        const balanceTitle = document.createElement('h2');
-        balanceTitle.textContent = 'Total Account Balance';
-        balanceTitle.style.margin = '0 0 10px 0';
-        balanceTitle.style.padding = '0';
-        balanceTitle.style.fontSize = '18px';
-        balanceTitle.style.fontWeight = 'bold';
-        balanceTitle.style.color = '#333333';
+        doc.setFontSize(12);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Total Account Balance', doc.internal.pageSize.getWidth() / 2, 53, { align: 'center' });
         
-        const balanceAmount = document.createElement('div');
-        balanceAmount.textContent = formatCurrency(totalBalance);
-        balanceAmount.style.fontSize = '24px';
-        balanceAmount.style.fontWeight = 'bold';
-        balanceAmount.style.color = '#4472C4';
+        doc.setFontSize(16);
+        doc.setTextColor(68, 114, 196); // #4472C4
+        doc.text(formatCurrency(totalBalance), doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
         
-        balanceSection.appendChild(balanceTitle);
-        balanceSection.appendChild(balanceAmount);
-        pdfContent.appendChild(balanceSection);
+        let yPosition = 75;
         
-        // Create account details section if we have accounts
-        if (idpsAccounts.length > 0 || superAccounts.length > 0) {
-            const accountsHeader = document.createElement('h2');
-            accountsHeader.textContent = 'Account Details';
-            accountsHeader.style.margin = '20px 0 15px 0';
-            accountsHeader.style.padding = '0';
-            accountsHeader.style.fontSize = '18px';
-            accountsHeader.style.fontWeight = 'bold';
-            accountsHeader.style.color = '#333333';
-            accountsHeader.style.borderBottom = '1px solid #dddddd';
-            accountsHeader.style.paddingBottom = '5px';
-            
-            pdfContent.appendChild(accountsHeader);
-            
-            // Add IDPS accounts table
-            if (idpsAccounts.length > 0) {
-                // Add subheader
-                const idpsHeader = document.createElement('h3');
-                idpsHeader.textContent = 'IDPS Accounts';
-                idpsHeader.style.margin = '15px 0 10px 0';
-                idpsHeader.style.padding = '0';
-                idpsHeader.style.fontSize = '16px';
-                idpsHeader.style.fontWeight = 'bold';
-                idpsHeader.style.color = '#333333';
-                
-                pdfContent.appendChild(idpsHeader);
-                
-                // Create table
-                const idpsTable = document.createElement('table');
-                idpsTable.style.width = '100%';
-                idpsTable.style.borderCollapse = 'collapse';
-                idpsTable.style.marginBottom = '20px';
-                
-                // Add header row
-                const headerRow = document.createElement('tr');
-                
-                const accountHeader = document.createElement('th');
-                accountHeader.textContent = 'Account';
-                accountHeader.style.backgroundColor = '#4472C4';
-                accountHeader.style.color = '#ffffff';
-                accountHeader.style.padding = '8px';
-                accountHeader.style.textAlign = 'left';
-                accountHeader.style.border = '1px solid #dddddd';
-                accountHeader.style.fontSize = '14px';
-                
-                const balanceHeader = document.createElement('th');
-                balanceHeader.textContent = 'Balance';
-                balanceHeader.style.backgroundColor = '#4472C4';
-                balanceHeader.style.color = '#ffffff';
-                balanceHeader.style.padding = '8px';
-                balanceHeader.style.textAlign = 'right';
-                balanceHeader.style.border = '1px solid #dddddd';
-                balanceHeader.style.fontSize = '14px';
-                
-                headerRow.appendChild(accountHeader);
-                headerRow.appendChild(balanceHeader);
-                idpsTable.appendChild(headerRow);
-                
-                // Add data rows
-                let idpsTotalBalance = 0;
-                idpsAccounts.forEach((account, index) => {
-                    idpsTotalBalance += account.balance;
-                    
-                    const row = document.createElement('tr');
-                    
-                    const accountCell = document.createElement('td');
-                    accountCell.textContent = `IDPS Account ${index + 1}`;
-                    accountCell.style.padding = '8px';
-                    accountCell.style.textAlign = 'left';
-                    accountCell.style.border = '1px solid #dddddd';
-                    accountCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-                    accountCell.style.fontSize = '14px';
-                    
-                    const balanceCell = document.createElement('td');
-                    balanceCell.textContent = formatCurrency(account.balance);
-                    balanceCell.style.padding = '8px';
-                    balanceCell.style.textAlign = 'right';
-                    balanceCell.style.border = '1px solid #dddddd';
-                    balanceCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-                    balanceCell.style.fontSize = '14px';
-                    
-                    row.appendChild(accountCell);
-                    row.appendChild(balanceCell);
-                    idpsTable.appendChild(row);
-                });
-                
-                // Add total row if multiple accounts
-                if (idpsAccounts.length > 1) {
-                    const totalRow = document.createElement('tr');
-                    
-                    const totalLabelCell = document.createElement('td');
-                    totalLabelCell.textContent = 'Total IDPS';
-                    totalLabelCell.style.padding = '8px';
-                    totalLabelCell.style.textAlign = 'left';
-                    totalLabelCell.style.border = '1px solid #dddddd';
-                    totalLabelCell.style.backgroundColor = '#e9ecef';
-                    totalLabelCell.style.fontWeight = 'bold';
-                    totalLabelCell.style.fontSize = '14px';
-                    
-                    const totalValueCell = document.createElement('td');
-                    totalValueCell.textContent = formatCurrency(idpsTotalBalance);
-                    totalValueCell.style.padding = '8px';
-                    totalValueCell.style.textAlign = 'right';
-                    totalValueCell.style.border = '1px solid #dddddd';
-                    totalValueCell.style.backgroundColor = '#e9ecef';
-                    totalValueCell.style.fontWeight = 'bold';
-                    totalValueCell.style.fontSize = '14px';
-                    
-                    totalRow.appendChild(totalLabelCell);
-                    totalRow.appendChild(totalValueCell);
-                    idpsTable.appendChild(totalRow);
-                }
-                
-                pdfContent.appendChild(idpsTable);
-            }
-            
-            // Add Super accounts table
-            if (superAccounts.length > 0) {
-                // Add subheader
-                const superHeader = document.createElement('h3');
-                superHeader.textContent = 'Super/Pension Accounts';
-                superHeader.style.margin = '15px 0 10px 0';
-                superHeader.style.padding = '0';
-                superHeader.style.fontSize = '16px';
-                superHeader.style.fontWeight = 'bold';
-                superHeader.style.color = '#333333';
-                
-                pdfContent.appendChild(superHeader);
-                
-                // Create table
-                const superTable = document.createElement('table');
-                superTable.style.width = '100%';
-                superTable.style.borderCollapse = 'collapse';
-                superTable.style.marginBottom = '20px';
-                
-                // Add header row
-                const headerRow = document.createElement('tr');
-                
-                const accountHeader = document.createElement('th');
-                accountHeader.textContent = 'Account';
-                accountHeader.style.backgroundColor = '#4472C4';
-                accountHeader.style.color = '#ffffff';
-                accountHeader.style.padding = '8px';
-                accountHeader.style.textAlign = 'left';
-                accountHeader.style.border = '1px solid #dddddd';
-                accountHeader.style.fontSize = '14px';
-                
-                const balanceHeader = document.createElement('th');
-                balanceHeader.textContent = 'Balance';
-                balanceHeader.style.backgroundColor = '#4472C4';
-                balanceHeader.style.color = '#ffffff';
-                balanceHeader.style.padding = '8px';
-                balanceHeader.style.textAlign = 'right';
-                balanceHeader.style.border = '1px solid #dddddd';
-                balanceHeader.style.fontSize = '14px';
-                
-                headerRow.appendChild(accountHeader);
-                headerRow.appendChild(balanceHeader);
-                superTable.appendChild(headerRow);
-                
-                // Add data rows
-                let superTotalBalance = 0;
-                superAccounts.forEach((account, index) => {
-                    superTotalBalance += account.balance;
-                    
-                    const row = document.createElement('tr');
-                    
-                    const accountCell = document.createElement('td');
-                    accountCell.textContent = `Super/Pension Account ${index + 1}`;
-                    accountCell.style.padding = '8px';
-                    accountCell.style.textAlign = 'left';
-                    accountCell.style.border = '1px solid #dddddd';
-                    accountCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-                    accountCell.style.fontSize = '14px';
-                    
-                    const balanceCell = document.createElement('td');
-                    balanceCell.textContent = formatCurrency(account.balance);
-                    balanceCell.style.padding = '8px';
-                    balanceCell.style.textAlign = 'right';
-                    balanceCell.style.border = '1px solid #dddddd';
-                    balanceCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-                    balanceCell.style.fontSize = '14px';
-                    
-                    row.appendChild(accountCell);
-                    row.appendChild(balanceCell);
-                    superTable.appendChild(row);
-                });
-                
-                // Add total row if multiple accounts
-                if (superAccounts.length > 1) {
-                    const totalRow = document.createElement('tr');
-                    
-                    const totalLabelCell = document.createElement('td');
-                    totalLabelCell.textContent = 'Total Super/Pension';
-                    totalLabelCell.style.padding = '8px';
-                    totalLabelCell.style.textAlign = 'left';
-                    totalLabelCell.style.border = '1px solid #dddddd';
-                    totalLabelCell.style.backgroundColor = '#e9ecef';
-                    totalLabelCell.style.fontWeight = 'bold';
-                    totalLabelCell.style.fontSize = '14px';
-                    
-                    const totalValueCell = document.createElement('td');
-                    totalValueCell.textContent = formatCurrency(superTotalBalance);
-                    totalValueCell.style.padding = '8px';
-                    totalValueCell.style.textAlign = 'right';
-                    totalValueCell.style.border = '1px solid #dddddd';
-                    totalValueCell.style.backgroundColor = '#e9ecef';
-                    totalValueCell.style.fontWeight = 'bold';
-                    totalValueCell.style.fontSize = '14px';
-                    
-                    totalRow.appendChild(totalLabelCell);
-                    totalRow.appendChild(totalValueCell);
-                    superTable.appendChild(totalRow);
-                }
-                
-                pdfContent.appendChild(superTable);
-            }
-        }
-        
-        // Add client preference information
+        // Client preference if set
         const preferenceValue = document.getElementById('platform-preference').value;
         if (preferenceValue !== 'standard') {
-            const prefDiv = document.createElement('div');
-            prefDiv.style.marginBottom = '20px';
-            prefDiv.style.padding = '10px 15px';
-            prefDiv.style.backgroundColor = '#f8f9fa';
-            prefDiv.style.border = '1px solid #dddddd';
-            prefDiv.style.borderRadius = '5px';
+            doc.setFillColor(248, 249, 250);
+            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, 15, 3, 3, 'F');
             
-            const prefTitle = document.createElement('h3');
-            prefTitle.textContent = 'Client Platform Preference';
-            prefTitle.style.margin = '0 0 10px 0';
-            prefTitle.style.padding = '0';
-            prefTitle.style.fontSize = '16px';
-            prefTitle.style.fontWeight = 'bold';
-            prefTitle.style.color = '#333333';
+            doc.setFontSize(12);
+            doc.setTextColor(40, 40, 40);
+            doc.text('Client Platform Preference:', 25, yPosition + 6);
             
-            const prefText = document.createElement('p');
-            prefText.style.margin = '0';
-            prefText.style.padding = '0';
-            prefText.style.fontSize = '14px';
-            prefText.style.color = '#333333';
-            
+            let preferenceText = '';
             if (preferenceValue === 'no-online') {
-                prefText.textContent = 'The client has expressed a desire to use a simple platform without online complexity.';
+                preferenceText = 'The client has expressed a desire to use a simple platform without online complexity.';
             } else if (preferenceValue === 'custom') {
                 const customText = document.getElementById('custom-preference-text').value;
-                prefText.textContent = customText || 'Custom preference (no details provided).';
+                preferenceText = customText || 'Custom preference (no details provided).';
             }
             
-            prefDiv.appendChild(prefTitle);
-            prefDiv.appendChild(prefText);
-            pdfContent.appendChild(prefDiv);
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            doc.text(preferenceText, 30, yPosition + 12);
+            
+            yPosition += 22;
         }
         
-        // --- FEE COMPARISON TABLE SECTION ---
+        // Add account tables if we have accounts
+        if (idpsAccounts.length > 0 || superAccounts.length > 0) {
+            doc.setFontSize(14);
+            doc.setTextColor(40, 40, 40);
+            doc.text('Account Details', 20, yPosition);
+            yPosition += 8;
+            
+            // Add IDPS accounts
+            if (idpsAccounts.length > 0) {
+                doc.setFontSize(12);
+                doc.text('IDPS Accounts', 20, yPosition);
+                yPosition += 6;
+                
+                // Create table data
+                const idpsTableData = [];
+                let idpsTotalBalance = 0;
+                
+                idpsAccounts.forEach((account, index) => {
+                    idpsTotalBalance += account.balance;
+                    idpsTableData.push([`IDPS Account ${index + 1}`, formatCurrency(account.balance)]);
+                });
+                
+                if (idpsAccounts.length > 1) {
+                    idpsTableData.push(['Total IDPS', formatCurrency(idpsTotalBalance)]);
+                }
+                
+                // Generate table
+                doc.autoTable({
+                    startY: yPosition,
+                    head: [['Account', 'Balance']],
+                    body: idpsTableData,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [68, 114, 196],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold'
+                    },
+                    styles: {
+                        fontSize: 10,
+                        cellPadding: 3
+                    },
+                    columnStyles: {
+                        0: { halign: 'left' },
+                        1: { halign: 'right' }
+                    },
+                    footStyles: {
+                        fillColor: [233, 236, 239],
+                        fontStyle: 'bold'
+                    }
+                });
+                
+                yPosition = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add Super accounts
+            if (superAccounts.length > 0) {
+                doc.setFontSize(12);
+                doc.text('Super/Pension Accounts', 20, yPosition);
+                yPosition += 6;
+                
+                // Create table data
+                const superTableData = [];
+                let superTotalBalance = 0;
+                
+                superAccounts.forEach((account, index) => {
+                    superTotalBalance += account.balance;
+                    superTableData.push([`Super/Pension Account ${index + 1}`, formatCurrency(account.balance)]);
+                });
+                
+                if (superAccounts.length > 1) {
+                    superTableData.push(['Total Super/Pension', formatCurrency(superTotalBalance)]);
+                }
+                
+                // Generate table
+                doc.autoTable({
+                    startY: yPosition,
+                    head: [['Account', 'Balance']],
+                    body: superTableData,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [68, 114, 196],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold'
+                    },
+                    styles: {
+                        fontSize: 10,
+                        cellPadding: 3
+                    },
+                    columnStyles: {
+                        0: { halign: 'left' },
+                        1: { halign: 'right' }
+                    },
+                    footStyles: {
+                        fillColor: [233, 236, 239],
+                        fontStyle: 'bold'
+                    }
+                });
+                
+                yPosition = doc.lastAutoTable.finalY + 10;
+            }
+        }
         
-        // Add section header
-        const feeComparisonHeader = document.createElement('h2');
-        feeComparisonHeader.textContent = 'Fee Comparison Results';
-        feeComparisonHeader.style.margin = '25px 0 15px 0';
-        feeComparisonHeader.style.padding = '0';
-        feeComparisonHeader.style.fontSize = '18px';
-        feeComparisonHeader.style.fontWeight = 'bold';
-        feeComparisonHeader.style.color = '#333333';
-        feeComparisonHeader.style.borderBottom = '1px solid #dddddd';
-        feeComparisonHeader.style.paddingBottom = '5px';
+        // Check if we need a new page for the fee comparison table
+        if (yPosition > 180) {
+            doc.addPage();
+            yPosition = 20;
+        }
         
-        pdfContent.appendChild(feeComparisonHeader);
+        // Add fee comparison section
+        doc.setFontSize(14);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Fee Comparison Results', 20, yPosition);
+        yPosition += 8;
         
-        // Create fee comparison table from scratch
-        const feeTable = document.createElement('table');
-        feeTable.style.width = '100%';
-        feeTable.style.borderCollapse = 'collapse';
-        feeTable.style.marginBottom = '20px';
-        
-        // Create header row
-        const feeHeaderRow = document.createElement('tr');
-        
-        // Define headers
-        const headers = ['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)'];
-        headers.forEach((headerText, index) => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            th.style.backgroundColor = '#4472C4';
-            th.style.color = '#ffffff';
-            th.style.padding = '8px';
-            th.style.textAlign = index === 0 ? 'left' : 'right';
-            th.style.border = '1px solid #dddddd';
-            th.style.fontSize = '14px';
-            feeHeaderRow.appendChild(th);
-        });
-        
-        feeTable.appendChild(feeHeaderRow);
-        
-        // Get fee data from original table
+        // Get fee data from the table
+        const feeTableData = [];
         const originalTable = document.getElementById('fee-comparison-table');
         const originalRows = originalTable.querySelectorAll('tr');
         
-        // Add data rows
+        // Track which rows are current platforms
+        const currentPlatformRows = [];
+        
         originalRows.forEach((origRow, rowIndex) => {
             const cells = origRow.querySelectorAll('td');
             if (cells.length === 0) return;
             
-            const isCurrentPlatform = origRow.classList.contains('current-platform');
+            const rowData = [];
+            cells.forEach(cell => rowData.push(cell.textContent.trim()));
             
-            const newRow = document.createElement('tr');
+            feeTableData.push(rowData);
             
-            // Create cells
-            for (let i = 0; i < cells.length; i++) {
-                const td = document.createElement('td');
-                td.textContent = cells[i].textContent;
-                td.style.padding = '8px';
-                td.style.textAlign = i === 0 ? 'left' : 'right';
-                td.style.border = '1px solid #dddddd';
-                td.style.fontSize = '14px';
-                
-                // Special formatting for current platform
-                if (isCurrentPlatform) {
-                    td.style.backgroundColor = '#e2f0d9'; // Light green
-                    td.style.fontWeight = 'bold';
-                    
-                    // Add left border for first cell to indicate current platform
-                    if (i === 0) {
-                        td.style.borderLeft = '4px solid #70ad47';
-                    }
-                } else {
-                    td.style.backgroundColor = rowIndex % 2 === 0 ? '#f9f9f9' : '#ffffff';
-                }
-                
-                newRow.appendChild(td);
+            if (origRow.classList.contains('current-platform')) {
+                currentPlatformRows.push(feeTableData.length - 1);
             }
-            
-            feeTable.appendChild(newRow);
         });
         
-        pdfContent.appendChild(feeTable);
-        
-        // --- NOTES SECTION ---
-        
-        // Add notes header
-        const notesHeader = document.createElement('h2');
-        notesHeader.textContent = 'Notes';
-        notesHeader.style.margin = '25px 0 15px 0';
-        notesHeader.style.padding = '0';
-        notesHeader.style.fontSize = '16px';
-        notesHeader.style.fontWeight = 'bold';
-        notesHeader.style.color = '#333333';
-        
-        pdfContent.appendChild(notesHeader);
-        
-        // Create notes list
-        const notesList = document.createElement('ul');
-        notesList.style.margin = '0 0 20px 0';
-        notesList.style.paddingLeft = '20px';
-        
-        // Add notes from original page
-        const originalNotes = document.querySelectorAll('.note p');
-        originalNotes.forEach(note => {
-            const li = document.createElement('li');
-            li.textContent = note.textContent;
-            li.style.margin = '0 0 8px 0';
-            li.style.padding = '0';
-            li.style.fontSize = '12px';
-            li.style.color = '#555555';
-            notesList.appendChild(li);
-        });
-        
-        pdfContent.appendChild(notesList);
-        
-        // --- FOOTER ---
-        
-        // Add footer with date and disclaimer
-        const footer = document.createElement('div');
-        footer.style.marginTop = '30px';
-        footer.style.paddingTop = '10px';
-        footer.style.borderTop = '1px solid #dddddd';
-        footer.style.fontSize = '11px';
-        footer.style.color = '#666666';
-        footer.style.display = 'flex';
-        footer.style.justifyContent = 'space-between';
-        
-        const dateInfo = document.createElement('div');
-        const currentDate = new Date();
-        dateInfo.textContent = `Report generated on: ${currentDate.toLocaleDateString()} at ${currentDate.toLocaleTimeString()}`;
-        
-        const disclaimer = document.createElement('div');
-        disclaimer.textContent = 'This comparison is for informational purposes only and should not be considered as financial advice.';
-        
-        footer.appendChild(dateInfo);
-        footer.appendChild(disclaimer);
-        pdfContent.appendChild(footer);
-        
-        // Add the content to the document temporarily
-        document.body.appendChild(pdfContent);
-        
-        // Define PDF options - simplified for more reliable rendering
-        const options = {
-            margin: 10,
-            filename: 'Platform_Fee_Comparison.pdf',
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { 
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                letterRendering: true
+        // Generate fee comparison table
+        doc.autoTable({
+            startY: yPosition,
+            head: [['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)']],
+            body: feeTableData,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [68, 114, 196],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold'
             },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait',
-                compress: true
-            }
-        };
-        
-        // Generate the PDF
-        html2pdf()
-            .from(pdfContent)
-            .set(options)
-            .save()
-            .then(() => {
-                // Restore button state
-                downloadPdfBtn.innerHTML = originalText;
-                downloadPdfBtn.disabled = false;
-                
-                // Remove the temporary element
-                document.body.removeChild(pdfContent);
-            })
-            .catch(error => {
-                console.error("Error generating PDF:", error);
-                downloadPdfBtn.innerHTML = originalText;
-                downloadPdfBtn.disabled = false;
-                
-                // Remove the temporary element
-                if (document.body.contains(pdfContent)) {
-                    document.body.removeChild(pdfContent);
+            styles: {
+                fontSize: 10,
+                cellPadding: 3
+            },
+            columnStyles: {
+                0: { halign: 'left' },
+                1: { halign: 'right' },
+                2: { halign: 'right' },
+                3: { halign: 'right' }
+            },
+            // Highlight current platform rows
+            didParseCell: function(data) {
+                if (currentPlatformRows.includes(data.row.index)) {
+                    data.cell.styles.fillColor = [226, 240, 217]; // Light green
+                    data.cell.styles.fontStyle = 'bold';
+                    
+                    if (data.column.index === 0) {
+                        data.cell.styles.lineWidth = { left: 0.5 };
+                        data.cell.styles.lineColor = { left: [112, 173, 71] }; // Green
+                    }
                 }
-                
-                alert('An error occurred while generating the PDF. Please try again.');
-            });
+            }
+        });
+        
+        yPosition = doc.lastAutoTable.finalY + 10;
+        
+        // Add notes section
+        if (yPosition > 220) {
+            doc.addPage();
+            yPosition = 20;
+        }
+        
+        doc.setFontSize(12);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Notes:', 20, yPosition);
+        yPosition += 6;
+        
+        // Get notes from the page
+        const originalNotes = document.querySelectorAll('.note p');
+        const noteLines = [];
+        
+        originalNotes.forEach(note => {
+            noteLines.push('• ' + note.textContent.trim());
+        });
+        
+        // Add notes
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        
+        noteLines.forEach(line => {
+            // Check if we need to wrap text
+            const textWidth = doc.getStringUnitWidth(line) * 9 / doc.internal.scaleFactor;
+            const maxWidth = doc.internal.pageSize.getWidth() - 40;
             
+            if (textWidth > maxWidth) {
+                const splitLines = doc.splitTextToSize(line, maxWidth);
+                splitLines.forEach(splitLine => {
+                    doc.text(splitLine, 20, yPosition);
+                    yPosition += 5;
+                });
+            } else {
+                doc.text(line, 20, yPosition);
+                yPosition += 5;
+            }
+            
+            // Add a bit of spacing between notes
+            yPosition += 1;
+            
+            // Check if we need a new page
+            if (yPosition > 280) {
+                doc.addPage();
+                yPosition = 20;
+            }
+        });
+        
+        // Add disclaimer at the bottom of the last page
+        const disclaimer = 'This comparison is for informational purposes only and should not be considered as financial advice.';
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(disclaimer, doc.internal.pageSize.getWidth() / 2, 285, { align: 'center' });
+        
+        // Save the PDF
+        doc.save('Platform_Fee_Comparison.pdf');
+        
+        // Restore button state
+        downloadPdfBtn.innerHTML = originalText;
+        downloadPdfBtn.disabled = false;
     } catch (error) {
         console.error("Error in downloadPDF:", error);
         
