@@ -607,7 +607,7 @@ function downloadComparison() {
     }
 }
 
-// Download comparison as PDF - Enhanced Full Page Version
+// Download comparison as PDF - Fixed version
 function downloadPDF() {
     try {
         // Show loading indication on the button
@@ -616,355 +616,450 @@ function downloadPDF() {
         downloadPdfBtn.innerHTML = 'Generating PDF...';
         downloadPdfBtn.disabled = true;
         
-        // Create a container for the content to be included in the PDF
-        const container = document.createElement('div');
-        container.style.padding = '20px';
-        container.style.backgroundColor = 'white';
-        container.style.color = 'black';
-        container.style.fontFamily = 'Arial, sans-serif';
-        container.style.maxWidth = '800px';
-        container.style.margin = '0 auto';
+        // Create a new div for the PDF content
+        const pdfContent = document.createElement('div');
         
-        // Add a title with logo-like styling
-        const titleSection = document.createElement('div');
-        titleSection.style.textAlign = 'center';
-        titleSection.style.marginBottom = '30px';
-        titleSection.style.padding = '15px';
-        titleSection.style.borderBottom = '2px solid #4472C4';
+        // Set PDF styles - explicit styling with nothing inherited
+        pdfContent.style.width = '100%';
+        pdfContent.style.backgroundColor = '#ffffff';
+        pdfContent.style.color = '#000000';
+        pdfContent.style.fontFamily = 'Arial, sans-serif';
+        pdfContent.style.padding = '20px';
+        pdfContent.style.boxSizing = 'border-box';
+        pdfContent.style.position = 'relative';
         
-        const title = document.createElement('h1');
-        title.textContent = 'Platform Fee Comparison Report';
-        title.style.color = '#2D3748';
-        title.style.fontSize = '28px';
-        title.style.margin = '0';
-        title.style.fontWeight = 'bold';
+        // Add title section
+        const titleDiv = document.createElement('div');
+        titleDiv.style.marginBottom = '20px';
+        titleDiv.style.textAlign = 'center';
+        titleDiv.style.borderBottom = '2px solid #4472C4';
+        titleDiv.style.paddingBottom = '10px';
         
-        const subtitle = document.createElement('p');
-        subtitle.textContent = 'Financial Planning Analysis';
-        subtitle.style.color = '#4472C4';
-        subtitle.style.margin = '8px 0 0 0';
-        subtitle.style.fontSize = '16px';
+        const titleText = document.createElement('h1');
+        titleText.textContent = 'Platform Fee Comparison Report';
+        titleText.style.margin = '0 0 5px 0';
+        titleText.style.padding = '0';
+        titleText.style.fontSize = '24px';
+        titleText.style.fontWeight = 'bold';
+        titleText.style.color = '#333333';
         
-        titleSection.appendChild(title);
-        titleSection.appendChild(subtitle);
-        container.appendChild(titleSection);
+        titleDiv.appendChild(titleText);
+        pdfContent.appendChild(titleDiv);
         
-        // Add account information section
-        const accountSection = document.createElement('div');
-        accountSection.style.marginBottom = '30px';
+        // --- ACCOUNT DETAILS SECTION ---
         
-        // Get account details
+        // Get account data
         let idpsAccounts = accountDetails.idps.filter(a => a.balance > 0);
         let superAccounts = accountDetails.super.filter(a => a.balance > 0);
+        const totalBalance = [...idpsAccounts, ...superAccounts].reduce((sum, account) => sum + account.balance, 0);
         
+        // Add total balance section
+        const balanceSection = document.createElement('div');
+        balanceSection.style.marginBottom = '20px';
+        balanceSection.style.padding = '15px';
+        balanceSection.style.backgroundColor = '#f5f5f5';
+        balanceSection.style.borderRadius = '5px';
+        balanceSection.style.textAlign = 'center';
+        
+        const balanceTitle = document.createElement('h2');
+        balanceTitle.textContent = 'Total Account Balance';
+        balanceTitle.style.margin = '0 0 10px 0';
+        balanceTitle.style.padding = '0';
+        balanceTitle.style.fontSize = '18px';
+        balanceTitle.style.fontWeight = 'bold';
+        balanceTitle.style.color = '#333333';
+        
+        const balanceAmount = document.createElement('div');
+        balanceAmount.textContent = formatCurrency(totalBalance);
+        balanceAmount.style.fontSize = '24px';
+        balanceAmount.style.fontWeight = 'bold';
+        balanceAmount.style.color = '#4472C4';
+        
+        balanceSection.appendChild(balanceTitle);
+        balanceSection.appendChild(balanceAmount);
+        pdfContent.appendChild(balanceSection);
+        
+        // Create account details section if we have accounts
         if (idpsAccounts.length > 0 || superAccounts.length > 0) {
-            const accountHeader = document.createElement('h2');
-            accountHeader.textContent = 'Account Details';
-            accountHeader.style.color = '#4472C4';
-            accountHeader.style.fontSize = '20px';
-            accountHeader.style.borderBottom = '1px solid #E2E8F0';
-            accountHeader.style.paddingBottom = '8px';
-            accountHeader.style.marginBottom = '15px';
-            accountSection.appendChild(accountHeader);
+            const accountsHeader = document.createElement('h2');
+            accountsHeader.textContent = 'Account Details';
+            accountsHeader.style.margin = '20px 0 15px 0';
+            accountsHeader.style.padding = '0';
+            accountsHeader.style.fontSize = '18px';
+            accountsHeader.style.fontWeight = 'bold';
+            accountsHeader.style.color = '#333333';
+            accountsHeader.style.borderBottom = '1px solid #dddddd';
+            accountsHeader.style.paddingBottom = '5px';
             
-            // Create accounts table
+            pdfContent.appendChild(accountsHeader);
+            
+            // Add IDPS accounts table
             if (idpsAccounts.length > 0) {
+                // Add subheader
                 const idpsHeader = document.createElement('h3');
                 idpsHeader.textContent = 'IDPS Accounts';
-                idpsHeader.style.color = '#2D3748';
+                idpsHeader.style.margin = '15px 0 10px 0';
+                idpsHeader.style.padding = '0';
                 idpsHeader.style.fontSize = '16px';
-                idpsHeader.style.marginTop = '20px';
-                idpsHeader.style.marginBottom = '10px';
-                accountSection.appendChild(idpsHeader);
+                idpsHeader.style.fontWeight = 'bold';
+                idpsHeader.style.color = '#333333';
                 
+                pdfContent.appendChild(idpsHeader);
+                
+                // Create table
                 const idpsTable = document.createElement('table');
                 idpsTable.style.width = '100%';
                 idpsTable.style.borderCollapse = 'collapse';
                 idpsTable.style.marginBottom = '20px';
-                idpsTable.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                 
-                // Add table headers
-                const idpsHeaderRow = document.createElement('tr');
-                idpsHeaderRow.innerHTML = `
-                    <th style="background-color: #4472C4; color: white; padding: 10px; text-align: left; border: 1px solid #E2E8F0; font-size: 14px;">Account</th>
-                    <th style="background-color: #4472C4; color: white; padding: 10px; text-align: right; border: 1px solid #E2E8F0; font-size: 14px;">Balance</th>
-                `;
-                idpsTable.appendChild(idpsHeaderRow);
+                // Add header row
+                const headerRow = document.createElement('tr');
                 
-                // Add account rows
+                const accountHeader = document.createElement('th');
+                accountHeader.textContent = 'Account';
+                accountHeader.style.backgroundColor = '#4472C4';
+                accountHeader.style.color = '#ffffff';
+                accountHeader.style.padding = '8px';
+                accountHeader.style.textAlign = 'left';
+                accountHeader.style.border = '1px solid #dddddd';
+                accountHeader.style.fontSize = '14px';
+                
+                const balanceHeader = document.createElement('th');
+                balanceHeader.textContent = 'Balance';
+                balanceHeader.style.backgroundColor = '#4472C4';
+                balanceHeader.style.color = '#ffffff';
+                balanceHeader.style.padding = '8px';
+                balanceHeader.style.textAlign = 'right';
+                balanceHeader.style.border = '1px solid #dddddd';
+                balanceHeader.style.fontSize = '14px';
+                
+                headerRow.appendChild(accountHeader);
+                headerRow.appendChild(balanceHeader);
+                idpsTable.appendChild(headerRow);
+                
+                // Add data rows
+                let idpsTotalBalance = 0;
                 idpsAccounts.forEach((account, index) => {
+                    idpsTotalBalance += account.balance;
+                    
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td style="padding: 10px; text-align: left; border: 1px solid #E2E8F0; background-color: ${index % 2 === 0 ? '#f8fafc' : 'white'}; font-size: 14px;">IDPS Account ${index + 1}</td>
-                        <td style="padding: 10px; text-align: right; border: 1px solid #E2E8F0; background-color: ${index % 2 === 0 ? '#f8fafc' : 'white'}; font-size: 14px; font-weight: 500;">${formatCurrency(account.balance)}</td>
-                    `;
+                    
+                    const accountCell = document.createElement('td');
+                    accountCell.textContent = `IDPS Account ${index + 1}`;
+                    accountCell.style.padding = '8px';
+                    accountCell.style.textAlign = 'left';
+                    accountCell.style.border = '1px solid #dddddd';
+                    accountCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+                    accountCell.style.fontSize = '14px';
+                    
+                    const balanceCell = document.createElement('td');
+                    balanceCell.textContent = formatCurrency(account.balance);
+                    balanceCell.style.padding = '8px';
+                    balanceCell.style.textAlign = 'right';
+                    balanceCell.style.border = '1px solid #dddddd';
+                    balanceCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+                    balanceCell.style.fontSize = '14px';
+                    
+                    row.appendChild(accountCell);
+                    row.appendChild(balanceCell);
                     idpsTable.appendChild(row);
                 });
                 
                 // Add total row if multiple accounts
                 if (idpsAccounts.length > 1) {
-                    const totalIdpsBalance = idpsAccounts.reduce((sum, account) => sum + account.balance, 0);
                     const totalRow = document.createElement('tr');
-                    totalRow.innerHTML = `
-                        <td style="padding: 10px; text-align: left; border: 1px solid #E2E8F0; background-color: #EDF2F7; font-weight: bold; font-size: 14px;">Total IDPS</td>
-                        <td style="padding: 10px; text-align: right; border: 1px solid #E2E8F0; background-color: #EDF2F7; font-weight: bold; font-size: 14px; color: #2C5282;">${formatCurrency(totalIdpsBalance)}</td>
-                    `;
+                    
+                    const totalLabelCell = document.createElement('td');
+                    totalLabelCell.textContent = 'Total IDPS';
+                    totalLabelCell.style.padding = '8px';
+                    totalLabelCell.style.textAlign = 'left';
+                    totalLabelCell.style.border = '1px solid #dddddd';
+                    totalLabelCell.style.backgroundColor = '#e9ecef';
+                    totalLabelCell.style.fontWeight = 'bold';
+                    totalLabelCell.style.fontSize = '14px';
+                    
+                    const totalValueCell = document.createElement('td');
+                    totalValueCell.textContent = formatCurrency(idpsTotalBalance);
+                    totalValueCell.style.padding = '8px';
+                    totalValueCell.style.textAlign = 'right';
+                    totalValueCell.style.border = '1px solid #dddddd';
+                    totalValueCell.style.backgroundColor = '#e9ecef';
+                    totalValueCell.style.fontWeight = 'bold';
+                    totalValueCell.style.fontSize = '14px';
+                    
+                    totalRow.appendChild(totalLabelCell);
+                    totalRow.appendChild(totalValueCell);
                     idpsTable.appendChild(totalRow);
                 }
                 
-                accountSection.appendChild(idpsTable);
+                pdfContent.appendChild(idpsTable);
             }
             
+            // Add Super accounts table
             if (superAccounts.length > 0) {
+                // Add subheader
                 const superHeader = document.createElement('h3');
                 superHeader.textContent = 'Super/Pension Accounts';
-                superHeader.style.color = '#2D3748';
+                superHeader.style.margin = '15px 0 10px 0';
+                superHeader.style.padding = '0';
                 superHeader.style.fontSize = '16px';
-                superHeader.style.marginTop = '20px';
-                superHeader.style.marginBottom = '10px';
-                accountSection.appendChild(superHeader);
+                superHeader.style.fontWeight = 'bold';
+                superHeader.style.color = '#333333';
                 
+                pdfContent.appendChild(superHeader);
+                
+                // Create table
                 const superTable = document.createElement('table');
                 superTable.style.width = '100%';
                 superTable.style.borderCollapse = 'collapse';
                 superTable.style.marginBottom = '20px';
-                superTable.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                 
-                // Add table headers
-                const superHeaderRow = document.createElement('tr');
-                superHeaderRow.innerHTML = `
-                    <th style="background-color: #4472C4; color: white; padding: 10px; text-align: left; border: 1px solid #E2E8F0; font-size: 14px;">Account</th>
-                    <th style="background-color: #4472C4; color: white; padding: 10px; text-align: right; border: 1px solid #E2E8F0; font-size: 14px;">Balance</th>
-                `;
-                superTable.appendChild(superHeaderRow);
+                // Add header row
+                const headerRow = document.createElement('tr');
                 
-                // Add account rows
+                const accountHeader = document.createElement('th');
+                accountHeader.textContent = 'Account';
+                accountHeader.style.backgroundColor = '#4472C4';
+                accountHeader.style.color = '#ffffff';
+                accountHeader.style.padding = '8px';
+                accountHeader.style.textAlign = 'left';
+                accountHeader.style.border = '1px solid #dddddd';
+                accountHeader.style.fontSize = '14px';
+                
+                const balanceHeader = document.createElement('th');
+                balanceHeader.textContent = 'Balance';
+                balanceHeader.style.backgroundColor = '#4472C4';
+                balanceHeader.style.color = '#ffffff';
+                balanceHeader.style.padding = '8px';
+                balanceHeader.style.textAlign = 'right';
+                balanceHeader.style.border = '1px solid #dddddd';
+                balanceHeader.style.fontSize = '14px';
+                
+                headerRow.appendChild(accountHeader);
+                headerRow.appendChild(balanceHeader);
+                superTable.appendChild(headerRow);
+                
+                // Add data rows
+                let superTotalBalance = 0;
                 superAccounts.forEach((account, index) => {
+                    superTotalBalance += account.balance;
+                    
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td style="padding: 10px; text-align: left; border: 1px solid #E2E8F0; background-color: ${index % 2 === 0 ? '#f8fafc' : 'white'}; font-size: 14px;">Super/Pension Account ${index + 1}</td>
-                        <td style="padding: 10px; text-align: right; border: 1px solid #E2E8F0; background-color: ${index % 2 === 0 ? '#f8fafc' : 'white'}; font-size: 14px; font-weight: 500;">${formatCurrency(account.balance)}</td>
-                    `;
+                    
+                    const accountCell = document.createElement('td');
+                    accountCell.textContent = `Super/Pension Account ${index + 1}`;
+                    accountCell.style.padding = '8px';
+                    accountCell.style.textAlign = 'left';
+                    accountCell.style.border = '1px solid #dddddd';
+                    accountCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+                    accountCell.style.fontSize = '14px';
+                    
+                    const balanceCell = document.createElement('td');
+                    balanceCell.textContent = formatCurrency(account.balance);
+                    balanceCell.style.padding = '8px';
+                    balanceCell.style.textAlign = 'right';
+                    balanceCell.style.border = '1px solid #dddddd';
+                    balanceCell.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+                    balanceCell.style.fontSize = '14px';
+                    
+                    row.appendChild(accountCell);
+                    row.appendChild(balanceCell);
                     superTable.appendChild(row);
                 });
                 
                 // Add total row if multiple accounts
                 if (superAccounts.length > 1) {
-                    const totalSuperBalance = superAccounts.reduce((sum, account) => sum + account.balance, 0);
                     const totalRow = document.createElement('tr');
-                    totalRow.innerHTML = `
-                        <td style="padding: 10px; text-align: left; border: 1px solid #E2E8F0; background-color: #EDF2F7; font-weight: bold; font-size: 14px;">Total Super/Pension</td>
-                        <td style="padding: 10px; text-align: right; border: 1px solid #E2E8F0; background-color: #EDF2F7; font-weight: bold; font-size: 14px; color: #2C5282;">${formatCurrency(totalSuperBalance)}</td>
-                    `;
+                    
+                    const totalLabelCell = document.createElement('td');
+                    totalLabelCell.textContent = 'Total Super/Pension';
+                    totalLabelCell.style.padding = '8px';
+                    totalLabelCell.style.textAlign = 'left';
+                    totalLabelCell.style.border = '1px solid #dddddd';
+                    totalLabelCell.style.backgroundColor = '#e9ecef';
+                    totalLabelCell.style.fontWeight = 'bold';
+                    totalLabelCell.style.fontSize = '14px';
+                    
+                    const totalValueCell = document.createElement('td');
+                    totalValueCell.textContent = formatCurrency(superTotalBalance);
+                    totalValueCell.style.padding = '8px';
+                    totalValueCell.style.textAlign = 'right';
+                    totalValueCell.style.border = '1px solid #dddddd';
+                    totalValueCell.style.backgroundColor = '#e9ecef';
+                    totalValueCell.style.fontWeight = 'bold';
+                    totalValueCell.style.fontSize = '14px';
+                    
+                    totalRow.appendChild(totalLabelCell);
+                    totalRow.appendChild(totalValueCell);
                     superTable.appendChild(totalRow);
                 }
                 
-                accountSection.appendChild(superTable);
+                pdfContent.appendChild(superTable);
             }
         }
         
-        container.appendChild(accountSection);
-        
-        // Add total balance info - make it stand out with a card-like design
-        const totalBalanceInfo = document.createElement('div');
-        totalBalanceInfo.style.marginBottom = '30px';
-        totalBalanceInfo.style.padding = '20px';
-        totalBalanceInfo.style.backgroundColor = '#F7FAFC';
-        totalBalanceInfo.style.borderRadius = '8px';
-        totalBalanceInfo.style.border = '1px solid #E2E8F0';
-        totalBalanceInfo.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-        totalBalanceInfo.style.textAlign = 'center';
-        
-        const totalBalanceHeader = document.createElement('h2');
-        totalBalanceHeader.textContent = document.querySelector('.total-balance-display h3').textContent;
-        totalBalanceHeader.style.margin = '0 0 10px 0';
-        totalBalanceHeader.style.color = '#2D3748';
-        totalBalanceHeader.style.fontSize = '18px';
-        totalBalanceHeader.style.fontWeight = '600';
-        
-        const totalBalanceAmount = document.createElement('div');
-        totalBalanceAmount.textContent = document.getElementById('total-balance-amount').textContent;
-        totalBalanceAmount.style.fontSize = '32px';
-        totalBalanceAmount.style.fontWeight = 'bold';
-        totalBalanceAmount.style.color = '#4472C4';
-        
-        totalBalanceInfo.appendChild(totalBalanceHeader);
-        totalBalanceInfo.appendChild(totalBalanceAmount);
-        container.appendChild(totalBalanceInfo);
-        
-        // Add client preference info if set
+        // Add client preference information
         const preferenceValue = document.getElementById('platform-preference').value;
         if (preferenceValue !== 'standard') {
-            const preferenceSection = document.createElement('div');
-            preferenceSection.style.marginBottom = '30px';
-            preferenceSection.style.padding = '15px';
-            preferenceSection.style.backgroundColor = '#F7FAFC';
-            preferenceSection.style.borderRadius = '8px';
-            preferenceSection.style.border = '1px solid #E2E8F0';
+            const prefDiv = document.createElement('div');
+            prefDiv.style.marginBottom = '20px';
+            prefDiv.style.padding = '10px 15px';
+            prefDiv.style.backgroundColor = '#f8f9fa';
+            prefDiv.style.border = '1px solid #dddddd';
+            prefDiv.style.borderRadius = '5px';
             
-            const preferenceHeader = document.createElement('h3');
-            preferenceHeader.textContent = 'Client Platform Preference';
-            preferenceHeader.style.margin = '0 0 10px 0';
-            preferenceHeader.style.color = '#2D3748';
-            preferenceHeader.style.fontSize = '16px';
+            const prefTitle = document.createElement('h3');
+            prefTitle.textContent = 'Client Platform Preference';
+            prefTitle.style.margin = '0 0 10px 0';
+            prefTitle.style.padding = '0';
+            prefTitle.style.fontSize = '16px';
+            prefTitle.style.fontWeight = 'bold';
+            prefTitle.style.color = '#333333';
             
-            const preferenceText = document.createElement('p');
+            const prefText = document.createElement('p');
+            prefText.style.margin = '0';
+            prefText.style.padding = '0';
+            prefText.style.fontSize = '14px';
+            prefText.style.color = '#333333';
+            
             if (preferenceValue === 'no-online') {
-                preferenceText.textContent = 'The client has expressed a desire to use a simple platform without online complexity.';
+                prefText.textContent = 'The client has expressed a desire to use a simple platform without online complexity.';
             } else if (preferenceValue === 'custom') {
                 const customText = document.getElementById('custom-preference-text').value;
-                preferenceText.textContent = customText || 'Custom preference (no details provided).';
+                prefText.textContent = customText || 'Custom preference (no details provided).';
             }
-            preferenceText.style.margin = '0';
-            preferenceText.style.fontSize = '14px';
-            preferenceText.style.lineHeight = '1.6';
             
-            preferenceSection.appendChild(preferenceHeader);
-            preferenceSection.appendChild(preferenceText);
-            
-            container.appendChild(preferenceSection);
+            prefDiv.appendChild(prefTitle);
+            prefDiv.appendChild(prefText);
+            pdfContent.appendChild(prefDiv);
         }
         
-        // Add comparison results header with visual separation
-        const resultsSection = document.createElement('div');
-        resultsSection.style.marginTop = '20px';
-        resultsSection.style.marginBottom = '30px';
+        // --- FEE COMPARISON TABLE SECTION ---
         
-        const resultsDivider = document.createElement('div');
-        resultsDivider.style.height = '4px';
-        resultsDivider.style.background = 'linear-gradient(to right, #4472C4, #A3BFFA)';
-        resultsDivider.style.marginBottom = '20px';
-        resultsDivider.style.borderRadius = '2px';
-        resultsSection.appendChild(resultsDivider);
+        // Add section header
+        const feeComparisonHeader = document.createElement('h2');
+        feeComparisonHeader.textContent = 'Fee Comparison Results';
+        feeComparisonHeader.style.margin = '25px 0 15px 0';
+        feeComparisonHeader.style.padding = '0';
+        feeComparisonHeader.style.fontSize = '18px';
+        feeComparisonHeader.style.fontWeight = 'bold';
+        feeComparisonHeader.style.color = '#333333';
+        feeComparisonHeader.style.borderBottom = '1px solid #dddddd';
+        feeComparisonHeader.style.paddingBottom = '5px';
         
-        const resultsHeader = document.createElement('h2');
-        resultsHeader.textContent = 'Fee Comparison Results';
-        resultsHeader.style.color = '#2D3748';
-        resultsHeader.style.fontSize = '20px';
-        resultsHeader.style.marginBottom = '15px';
-        resultsSection.appendChild(resultsHeader);
+        pdfContent.appendChild(feeComparisonHeader);
         
-        // Add summary text explaining the results
-        const summaryText = document.createElement('p');
-        summaryText.textContent = 'The table below shows the annual administration and expense recovery fees for each platform based on the account balances provided. Current platform(s) are highlighted in green.';
-        summaryText.style.color = '#4A5568';
-        summaryText.style.marginBottom = '20px';
-        summaryText.style.fontSize = '14px';
-        summaryText.style.lineHeight = '1.6';
-        resultsSection.appendChild(summaryText);
-        
-        container.appendChild(resultsSection);
-        
-        // Clone the fee comparison table for the PDF and enhance styling
+        // Create fee comparison table from scratch
         const feeTable = document.createElement('table');
         feeTable.style.width = '100%';
         feeTable.style.borderCollapse = 'collapse';
-        feeTable.style.marginBottom = '30px';
-        feeTable.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+        feeTable.style.marginBottom = '20px';
         
         // Create header row
-        const headerRow = document.createElement('tr');
-        ['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)'].forEach(headerText => {
+        const feeHeaderRow = document.createElement('tr');
+        
+        // Define headers
+        const headers = ['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)'];
+        headers.forEach((headerText, index) => {
             const th = document.createElement('th');
             th.textContent = headerText;
             th.style.backgroundColor = '#4472C4';
-            th.style.color = 'white';
-            th.style.padding = '12px';
-            th.style.textAlign = headerText === 'Platform' ? 'left' : 'right';
-            th.style.border = '1px solid #E2E8F0';
+            th.style.color = '#ffffff';
+            th.style.padding = '8px';
+            th.style.textAlign = index === 0 ? 'left' : 'right';
+            th.style.border = '1px solid #dddddd';
             th.style.fontSize = '14px';
-            headerRow.appendChild(th);
+            feeHeaderRow.appendChild(th);
         });
-        feeTable.appendChild(headerRow);
         
-        // Add data rows - copying from the existing table
+        feeTable.appendChild(feeHeaderRow);
+        
+        // Get fee data from original table
         const originalTable = document.getElementById('fee-comparison-table');
-        const rows = originalTable.querySelectorAll('tr');
+        const originalRows = originalTable.querySelectorAll('tr');
         
-        rows.forEach((origRow, index) => {
+        // Add data rows
+        originalRows.forEach((origRow, rowIndex) => {
             const cells = origRow.querySelectorAll('td');
-            if (cells.length > 0) {
-                const newRow = document.createElement('tr');
-                const isCurrentPlatform = origRow.classList.contains('current-platform');
+            if (cells.length === 0) return;
+            
+            const isCurrentPlatform = origRow.classList.contains('current-platform');
+            
+            const newRow = document.createElement('tr');
+            
+            // Create cells
+            for (let i = 0; i < cells.length; i++) {
+                const td = document.createElement('td');
+                td.textContent = cells[i].textContent;
+                td.style.padding = '8px';
+                td.style.textAlign = i === 0 ? 'left' : 'right';
+                td.style.border = '1px solid #dddddd';
+                td.style.fontSize = '14px';
                 
-                // Create styled cells
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = document.createElement('td');
-                    cell.textContent = cells[i].textContent;
+                // Special formatting for current platform
+                if (isCurrentPlatform) {
+                    td.style.backgroundColor = '#e2f0d9'; // Light green
+                    td.style.fontWeight = 'bold';
                     
-                    // Apply styling based on cell position and if current platform
-                    if (isCurrentPlatform) {
-                        cell.style.backgroundColor = '#EBFAF0';
-                        cell.style.borderLeft = i === 0 ? '4px solid #34D399' : '1px solid #E2E8F0';
-                        cell.style.fontWeight = 'bold';
-                    } else {
-                        cell.style.backgroundColor = index % 2 === 0 ? '#F8FAFC' : 'white';
-                        cell.style.border = '1px solid #E2E8F0';
+                    // Add left border for first cell to indicate current platform
+                    if (i === 0) {
+                        td.style.borderLeft = '4px solid #70ad47';
                     }
-                    
-                    cell.style.padding = '12px';
-                    cell.style.textAlign = i === 0 ? 'left' : 'right';
-                    cell.style.fontSize = '14px';
-                    
-                    // Highlight total fee column with slightly bolder text
-                    if (i === 3) {
-                        cell.style.fontWeight = isCurrentPlatform ? 'bold' : '600';
-                        cell.style.color = isCurrentPlatform ? '#047857' : '#4472C4';
-                    }
-                    
-                    newRow.appendChild(cell);
+                } else {
+                    td.style.backgroundColor = rowIndex % 2 === 0 ? '#f9f9f9' : '#ffffff';
                 }
                 
-                feeTable.appendChild(newRow);
+                newRow.appendChild(td);
             }
+            
+            feeTable.appendChild(newRow);
         });
         
-        container.appendChild(feeTable);
+        pdfContent.appendChild(feeTable);
         
-        // Add explanatory notes with better styling
-        const notesContainer = document.createElement('div');
-        notesContainer.style.backgroundColor = '#F8FAFC';
-        notesContainer.style.padding = '15px';
-        notesContainer.style.borderRadius = '8px';
-        notesContainer.style.marginBottom = '30px';
-        notesContainer.style.border = '1px solid #E2E8F0';
+        // --- NOTES SECTION ---
         
-        const notesHeader = document.createElement('h3');
-        notesHeader.textContent = 'Important Notes';
-        notesHeader.style.color = '#4472C4';
-        notesHeader.style.marginTop = '0';
-        notesHeader.style.marginBottom = '10px';
+        // Add notes header
+        const notesHeader = document.createElement('h2');
+        notesHeader.textContent = 'Notes';
+        notesHeader.style.margin = '25px 0 15px 0';
+        notesHeader.style.padding = '0';
         notesHeader.style.fontSize = '16px';
-        notesContainer.appendChild(notesHeader);
+        notesHeader.style.fontWeight = 'bold';
+        notesHeader.style.color = '#333333';
         
-        // Clone and format all notes
+        pdfContent.appendChild(notesHeader);
+        
+        // Create notes list
         const notesList = document.createElement('ul');
-        notesList.style.color = '#4A5568';
-        notesList.style.fontSize = '12px';
+        notesList.style.margin = '0 0 20px 0';
         notesList.style.paddingLeft = '20px';
-        notesList.style.margin = '0';
         
+        // Add notes from original page
         const originalNotes = document.querySelectorAll('.note p');
         originalNotes.forEach(note => {
-            const listItem = document.createElement('li');
-            listItem.textContent = note.textContent;
-            listItem.style.marginBottom = '5px';
-            listItem.style.lineHeight = '1.5';
-            notesList.appendChild(listItem);
+            const li = document.createElement('li');
+            li.textContent = note.textContent;
+            li.style.margin = '0 0 8px 0';
+            li.style.padding = '0';
+            li.style.fontSize = '12px';
+            li.style.color = '#555555';
+            notesList.appendChild(li);
         });
         
-        notesContainer.appendChild(notesList);
-        container.appendChild(notesContainer);
+        pdfContent.appendChild(notesList);
         
-        // Add report footer with date and disclaimer
+        // --- FOOTER ---
+        
+        // Add footer with date and disclaimer
         const footer = document.createElement('div');
         footer.style.marginTop = '30px';
-        footer.style.borderTop = '1px solid #E2E8F0';
-        footer.style.paddingTop = '15px';
+        footer.style.paddingTop = '10px';
+        footer.style.borderTop = '1px solid #dddddd';
+        footer.style.fontSize = '11px';
+        footer.style.color = '#666666';
         footer.style.display = 'flex';
         footer.style.justifyContent = 'space-between';
-        footer.style.fontSize = '11px';
-        footer.style.color = '#718096';
         
         const dateInfo = document.createElement('div');
         const currentDate = new Date();
@@ -975,32 +1070,53 @@ function downloadPDF() {
         
         footer.appendChild(dateInfo);
         footer.appendChild(disclaimer);
-        container.appendChild(footer);
+        pdfContent.appendChild(footer);
         
-        // Define PDF options
+        // Add the content to the document temporarily
+        document.body.appendChild(pdfContent);
+        
+        // Define PDF options - simplified for more reliable rendering
         const options = {
-            margin: [15, 15, 15, 15], // [top, right, bottom, left]
+            margin: 10,
             filename: 'Platform_Fee_Comparison.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            image: { type: 'jpeg', quality: 1 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                letterRendering: true
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait',
+                compress: true
+            }
         };
         
         // Generate the PDF
         html2pdf()
-            .from(container)
+            .from(pdfContent)
             .set(options)
             .save()
             .then(() => {
                 // Restore button state
                 downloadPdfBtn.innerHTML = originalText;
                 downloadPdfBtn.disabled = false;
+                
+                // Remove the temporary element
+                document.body.removeChild(pdfContent);
             })
             .catch(error => {
                 console.error("Error generating PDF:", error);
                 downloadPdfBtn.innerHTML = originalText;
                 downloadPdfBtn.disabled = false;
+                
+                // Remove the temporary element
+                if (document.body.contains(pdfContent)) {
+                    document.body.removeChild(pdfContent);
+                }
+                
                 alert('An error occurred while generating the PDF. Please try again.');
             });
             
