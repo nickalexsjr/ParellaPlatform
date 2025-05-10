@@ -15,6 +15,7 @@
     --calculated-bg: #1a3045;
     --calculated-color: #38bdf8;
     --current-platform-color: #34d399;
+    --pdf-btn-color: #f87171;
 }
 
 * {
@@ -191,21 +192,36 @@ select.input-field {
     padding-top: 1.5rem;
 }
 
+/* Fixed alignment issues with the grid */
 .grid-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
+    align-items: start; /* This helps alignment */
 }
 
+/* Make the input groups more consistent in height */
 .input-group {
     margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Make all input groups the same height */
 }
 
+/* Ensure labels have consistent height */
 .input-group label {
     display: block;
     margin-bottom: 0.5rem;
     color: var(--text-secondary);
+    height: 1.5rem; /* Fixed height for labels */
+}
+
+/* For Step 1, use a more rigid grid layout */
+#step1 .grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Always 2 columns */
+    gap: 1rem;
 }
 
 .fee-table {
@@ -254,6 +270,14 @@ select.input-field {
     border-left: 4px solid var(--current-platform-color);
 }
 
+/* Download buttons styling */
+.download-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
 .download-btn {
     background-color: var(--success-color);
     color: #121212;
@@ -266,7 +290,9 @@ select.input-field {
     align-items: center;
     gap: 8px;
     transition: background-color 0.2s, transform 0.1s;
-    margin-top: 1.5rem;
+    flex: 1;
+    justify-content: center;
+    min-width: 180px;
 }
 
 .download-btn:hover {
@@ -276,6 +302,14 @@ select.input-field {
 
 .download-btn:active {
     transform: translateY(0);
+}
+
+.pdf-btn {
+    background-color: var(--pdf-btn-color);
+}
+
+.pdf-btn:hover {
+    background-color: #e05252;
 }
 
 .download-icon {
@@ -340,5 +374,13 @@ select.input-field {
     
     .grid-container {
         grid-template-columns: 1fr;
+    }
+    
+    .download-buttons {
+        flex-direction: column;
+    }
+    
+    .download-btn {
+        width: 100%;
     }
 }
