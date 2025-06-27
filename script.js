@@ -128,7 +128,7 @@ const productFees = {
             return 95 + (accountBalance * 0.0003);
         }
     },
-    "Centric IDPS": {
+    "Centric": {
         adminFee: function(totalBalance, accountBalance, accountType) {
             // Fixed $450 fee per account for IDPS
             return 450;
@@ -987,7 +987,7 @@ function calculatePlatformFees(platform, allAccounts) {
             // Use the appropriate platform for the account type
             if (platform === "CFS Edge Investment" && account.balance > 0) {
                 platformToUse = "CFS Edge Super";
-            } else if (platform === "Centric IDPS") {
+            } else if (platform === "Centric") {
                 platformToUse = "Centric Choice";
             }
             
@@ -1088,7 +1088,7 @@ function calculate() {
         if (hasIdps && !hasSuper) {
             // IDPS only
             availablePlatforms = [
-                "Centric IDPS",
+                "Centric",
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
@@ -1107,7 +1107,7 @@ function calculate() {
         } else if (hasIdps && hasSuper) {
             // Both IDPS and Super
             availablePlatforms = [
-                "Centric IDPS", // Will use Centric Choice for Super accounts
+                "Centric", // Will use Centric Choice for Super accounts
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
