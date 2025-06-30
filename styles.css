@@ -367,6 +367,122 @@ select.input-field {
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
+/* Fee view toggle styling */
+.fee-view-toggle {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    background-color: var(--dark-surface-2);
+    padding: 0.75rem;
+    border-radius: 4px;
+}
+
+.fee-view-toggle label {
+    margin-right: 0.5rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Expanded view styling */
+.account-row td {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.platform-total-row td {
+    font-weight: bold;
+    background-color: var(--header-bg);
+    border-top: 2px solid var(--border-color);
+}
+
+.separator-row td {
+    height: 10px;
+    background-color: transparent;
+    border: none;
+}
+
+/* Fee details expansion styling */
+.expand-icon {
+    display: inline-block;
+    transition: transform 0.2s;
+    user-select: none;
+}
+
+.fee-details-row td {
+    padding: 0;
+    background-color: var(--dark-bg);
+    border-left: 4px solid var(--primary-color);
+}
+
+.fee-breakdown-container {
+    padding: 1.5rem;
+    background-color: var(--dark-surface);
+    margin: 0.5rem;
+    border-radius: 4px;
+}
+
+.fee-breakdown-container h4 {
+    margin-top: 0;
+    color: var(--accent-color);
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.account-breakdown {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--dark-surface-2);
+    border-radius: 4px;
+}
+
+.account-breakdown h5 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.fee-section {
+    margin-bottom: 1rem;
+}
+
+.fee-section h6 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.fee-component {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    padding-left: 1rem;
+    font-size: 0.9rem;
+}
+
+.component-description {
+    color: var(--text-secondary);
+}
+
+.component-amount {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.account-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -382,5 +498,14 @@ select.input-field {
     
     .download-btn {
         width: 100%;
+    }
+    
+    .fee-view-toggle {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .fee-view-toggle label {
+        margin-bottom: 0.5rem;
     }
 }
