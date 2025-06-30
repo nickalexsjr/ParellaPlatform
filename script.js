@@ -277,6 +277,24 @@ const productFees = {
             // No expense recovery fee
             return 0;
         }
+    },
+    "Centric IDPS/Centric Choice": {
+        adminFee: function(totalBalance, accountBalance, accountType) {
+            // Placeholder - actual calculation handled in calculatePlatformFees
+            return 0;
+        },
+        expenseFee: function(accountBalance) {
+            return 0;
+        }
+    },
+    "Centric IDPS/Centric One": {
+        adminFee: function(totalBalance, accountBalance, accountType) {
+            // Placeholder - actual calculation handled in calculatePlatformFees
+            return 0;
+        },
+        expenseFee: function(accountBalance) {
+            return 0;
+        }
     }
 };
 
@@ -821,8 +839,16 @@ function populatePlatformCheckboxes() {
         
         checkboxesContainer.innerHTML = '';
         
-        // Get all platform names
-        const platforms = Object.keys(productFees);
+        // Get all platform names including the new combined ones
+        let platforms = Object.keys(productFees);
+        
+        // If we have both IDPS and Super, add the combined Centric options
+        if (accountDetails.idps.some(a => a.balance > 0) && accountDetails.super.some(a => a.balance > 0)) {
+            // Remove single Centric options and add combined ones
+            platforms = platforms.filter(p => p !== "Centric" && p !== "Centric Choice" && p !== "Centric One");
+            platforms.push("Centric IDPS/Centric Choice");
+            platforms.push("Centric IDPS/Centric One");
+        }
         
         // Add checkbox for each platform
         platforms.forEach(platform => {
