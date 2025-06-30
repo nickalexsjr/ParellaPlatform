@@ -301,6 +301,14 @@ function calculateDetailedFeeBreakdown(platform, accountBalance, accountType, al
         platformToUse = "CFS Edge Super";
     } else if (platform === "Centric" && accountType === 'super') {
         platformToUse = "Centric Choice";
+    } else if (platform === "Centric IDPS/Centric Choice" && accountType === 'idps') {
+        platformToUse = "Centric";
+    } else if (platform === "Centric IDPS/Centric Choice" && accountType === 'super') {
+        platformToUse = "Centric Choice";
+    } else if (platform === "Centric IDPS/Centric One" && accountType === 'idps') {
+        platformToUse = "Centric";
+    } else if (platform === "Centric IDPS/Centric One" && accountType === 'super') {
+        platformToUse = "Centric One";
     } else if (platform === "Centric One" && accountType === 'idps') {
         return breakdown; // Centric One not available for IDPS
     }
@@ -1431,6 +1439,9 @@ function calculatePlatformFees(platform, allAccounts) {
             } else if (platform === "Centric One") {
                 // Centric One is only for Super accounts
                 return;
+            } else if (platform === "Centric IDPS/Centric Choice" || platform === "Centric IDPS/Centric One") {
+                // For combined Centric platforms, use Centric for IDPS
+                platformToUse = "Centric";
             }
             
             if (productFees[platformToUse]) {
@@ -1473,8 +1484,10 @@ function calculatePlatformFees(platform, allAccounts) {
                 platformToUse = "CFS Edge Super";
             } else if (platform === "CFS Edge" && account.balance > 0) {
                 platformToUse = "CFS Edge Super";
-            } else if (platform === "Centric") {
+            } else if (platform === "Centric" || platform === "Centric IDPS/Centric Choice") {
                 platformToUse = "Centric Choice";
+            } else if (platform === "Centric IDPS/Centric One") {
+                platformToUse = "Centric One";
             }
             
             if (productFees[platformToUse]) {
@@ -1608,7 +1621,8 @@ function calculate() {
         } else if (hasIdps && hasSuper) {
             // Both IDPS and Super
             availablePlatforms = [
-                "Centric", // Will use Centric Choice for Super accounts
+                "Centric IDPS/Centric Choice",
+                "Centric IDPS/Centric One",
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
