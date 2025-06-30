@@ -109,7 +109,7 @@
             
             <div class="step-container" style="margin-bottom: 1.5rem;">
                 <div class="input-group">
-                    <label for="set-current-platform">Set Current Platform(s)</label>
+                    <label for="set-current-platform">Set Selected Platform(s)</label>
                     <select id="set-current-platform" class="input-field">
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
@@ -120,9 +120,18 @@
                         <!-- Platform checkboxes will be added dynamically -->
                     </div>
                     <button id="save-current-platforms" class="toggle-button" style="margin-top: 1rem;">
-                        Save Current Platform(s)
+                        Save Selected Platform(s)
                     </button>
                 </div>
+            </div>
+            
+            <!-- Fee View Toggle -->
+            <div class="fee-view-toggle">
+                <label for="fee-view-mode">Fee Display Mode:</label>
+                <select id="fee-view-mode" class="input-field" style="width: auto; display: inline-block; margin-left: 0.5rem;">
+                    <option value="merged">Merged Platform Fees</option>
+                    <option value="expanded">Expanded Fees by Account</option>
+                </select>
             </div>
             
             <div class="scrollable-table">
