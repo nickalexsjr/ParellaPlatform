@@ -1412,9 +1412,9 @@ function calculatePlatformFees(platform, allAccounts) {
             // Use the appropriate platform for the account type
             if (platform === "CFS Edge Super" && account.balance > 0) {
                 platformToUse = "CFS Edge Investment";
-            } else if (platform === "CFS Edge Investment" && allAccounts.super.length > 0 && allAccounts.super.some(a => a.balance > 0)) {
-                // Skip for now, we'll calculate CFS Edge Investment fees separately
-                return;
+            } else if (platform === "CFS Edge Investment") {
+                // For CFS Edge Investment, use it for IDPS accounts
+                platformToUse = "CFS Edge Investment";
             } else if (platform === "Centric One") {
                 // Centric One is only for Super accounts
                 return;
