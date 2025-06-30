@@ -5,7 +5,6 @@ let accountDetails = {
     super: []
 };
 let expandedPlatforms = {};
-let feeViewMode = 'merged';
 
 // Number formatting function
 function formatCurrency(number) {
@@ -946,65 +945,28 @@ function downloadComparison() {
         
         const rows = table.querySelectorAll('tr');
         
-        // Create CSV content based on view mode
-        let csvContent = "";
+        // Create CSV content
+        let csvContent = "Platform,Admin Fee,Expense Recovery,Total Fee\n";
         
-        if (feeViewMode === 'merged') {
-            csvContent = "Platform,Admin Fee,Expense Recovery,Total Fee\n";
+        rows.forEach(row => {
+            // Skip detail rows
+            if (row.classList.contains('fee-details-row')) return;
             
-            rows.forEach(row => {
-                // Skip detail rows
-                if (row.classList.contains('fee-details-row')) return;
-                
-                const cells = row.querySelectorAll('td');
-                if (cells.length > 0) {
-                    // Check if it's a regular platform row
-                    const platformCell = cells[0].querySelector('.platform-name');
-                    if (platformCell) {
-                        const rowData = [
-                            platformCell.textContent.trim(),
-                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[3].textContent.trim().replace('$', '').replace(',', '')
-                        ];
-                        csvContent += rowData.join(',') + '\n';
-                    }
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                // Check if it's a regular platform row
+                const platformCell = cells[0].querySelector('.platform-name');
+                if (platformCell) {
+                    const rowData = [
+                        platformCell.textContent.trim(),
+                        cells[1].textContent.trim().replace('$', '').replace(',', ''),
+                        cells[2].textContent.trim().replace('$', '').replace(',', ''),
+                        cells[3].textContent.trim().replace('$', '').replace(',', '')
+                    ];
+                    csvContent += rowData.join(',') + '\n';
                 }
-            });
-        } else {
-            // Expanded view
-            csvContent = "Platform,Account,Admin Fee,Expense Recovery,Total Fee\n";
-            
-            rows.forEach(row => {
-                // Skip detail rows
-                if (row.classList.contains('fee-details-row')) return;
-                
-                const cells = row.querySelectorAll('td');
-                if (cells.length > 0) {
-                    if (row.classList.contains('account-row')) {
-                        // Account row
-                        const rowData = [
-                            '', // Empty platform name for account rows
-                            cells[0].textContent.trim(),
-                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[3].textContent.trim().replace('$', '').replace(',', '')
-                        ];
-                        csvContent += rowData.join(',') + '\n';
-                    } else if (row.classList.contains('platform-total-row')) {
-                        // Platform total row
-                        const rowData = [
-                            cells[0].textContent.trim().replace(' Total', ''),
-                            'Total',
-                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
-                            cells[3].textContent.trim().replace('$', '').replace(',', '')
-                        ];
-                        csvContent += rowData.join(',') + '\n';
-                    }
-                }
-            });
-        }
+            }
+        });
         
         // Create and download the file
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1085,7 +1047,6 @@ function downloadPDF() {
         let yPosition = 75;
         
         // Client preference if set
-      // Client preference if set
         const preferenceValue = document.getElementById('platform-preference').value;
         if (preferenceValue !== 'standard') {
             let preferenceText = '';
@@ -1268,67 +1229,29 @@ function downloadPDF() {
         // Track which rows are current platforms
         const currentPlatformRows = [];
         
-        if (feeViewMode === 'merged') {
-            // Merged view - simple extraction
-            originalRows.forEach((origRow, rowIndex) => {
-                if (origRow.classList.contains('fee-details-row')) return;
-                
-                const cells = origRow.querySelectorAll('td');
-                if (cells.length === 0) return;
-                
-                const platformNameEl = cells[0].querySelector('.platform-name');
-                if (!platformNameEl) return;
-                
-                const rowData = [];
-                rowData.push(platformNameEl.textContent.trim());
-                cells.forEach((cell, idx) => {
-                    if (idx > 0) rowData.push(cell.textContent.trim());
-                });
-                
-                feeTableData.push(rowData);
-                
-                if (origRow.classList.contains('current-platform')) {
-                    currentPlatformRows.push(feeTableData.length - 1);
-                }
+        // Extract data from merged view
+        originalRows.forEach((origRow, rowIndex) => {
+            if (origRow.classList.contains('fee-details-row')) return;
+            
+            const cells = origRow.querySelectorAll('td');
+            if (cells.length === 0) return;
+            
+            const platformNameEl = cells[0].querySelector('.platform-name');
+            if (!platformNameEl) return;
+            
+            const rowData = [];
+            rowData.push(platformNameEl.textContent.trim());
+            cells.forEach((cell, idx) => {
+                if (idx > 0) rowData.push(cell.textContent.trim());
             });
-        } else {
-            // Expanded view - more complex extraction
-            let currentPlatform = '';
-            originalRows.forEach((origRow) => {
-                if (origRow.classList.contains('fee-details-row')) return;
-                
-                const cells = origRow.querySelectorAll('td');
-                if (cells.length === 0) return;
-                
-                if (origRow.classList.contains('platform-total-row')) {
-                    // Platform total row
-                    const platformName = cells[0].textContent.trim().replace(' Total', '');
-                    currentPlatform = platformName;
-                    const rowData = [
-                        platformName + ' Total',
-                        cells[1].textContent.trim(),
-                        cells[2].textContent.trim(),
-                        cells[3].textContent.trim()
-                    ];
-                    feeTableData.push(rowData);
-                    
-                    if (origRow.classList.contains('current-platform')) {
-                        currentPlatformRows.push(feeTableData.length - 1);
-                    }
-                } else if (origRow.classList.contains('account-row')) {
-                    // Account row
-                    const rowData = [
-                        '  ' + cells[0].textContent.trim(), // Indent account names
-                        cells[1].textContent.trim(),
-                        cells[2].textContent.trim(),
-                        cells[3].textContent.trim()
-                    ];
-                    feeTableData.push(rowData);
-                }
-            });
-        }
+            
+            feeTableData.push(rowData);
+            
+            if (origRow.classList.contains('current-platform')) {
+                currentPlatformRows.push(feeTableData.length - 1);
+            }
+        });
         
-        // Generate fee comparison table
         // Generate fee comparison table
         doc.autoTable({
             startY: yPosition,
@@ -1713,231 +1636,105 @@ function calculate() {
         // Combine them with current platforms at the top
         platformsData = [...currentPlatformsData, ...otherPlatformsData];
         
-        // Add rows to table based on view mode
-        if (feeViewMode === 'merged') {
-            // Merged view - show total fees per platform
-            platformsData.forEach(platform => {
-                const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
-                const row = document.createElement('tr');
-                row.className = platform.isCurrent ? 'current-platform' : '';
-                
-                row.innerHTML = `
-                    <td>
-                        <span class="expand-icon" id="expand-${platformId}" onclick="toggleFeeDetails('${platformId}')" style="cursor: pointer; margin-right: 8px;">▶</span>
-                        <span class="platform-name">${platform.name}${platform.isCurrent ? ' (Selected)' : ''}</span>
-                    </td>
-                    <td>${formatCurrency(platform.adminFee)}</td>
-                    <td>${formatCurrency(platform.expenseFee)}</td>
-                    <td>${formatCurrency(platform.totalFee)}</td>
-                `;
-                
-                feeComparisonTable.appendChild(row);
-                
-                // Add expandable details row
-                const detailsRow = document.createElement('tr');
-                detailsRow.id = `details-${platformId}`;
-                detailsRow.className = 'fee-details-row hidden';
-                detailsRow.innerHTML = `
-                    <td colspan="4">
-                        <div class="fee-breakdown-container">
-                            <h4>Fee Calculation Breakdown</h4>
-                            <div id="breakdown-${platformId}"></div>
-                        </div>
-                    </td>
-                `;
-                feeComparisonTable.appendChild(detailsRow);
-                
-                // Populate breakdown details
-                const breakdownContainer = document.getElementById(`breakdown-${platformId}`);
-                if (breakdownContainer && platform.accountFees.length > 0) {
-                    platform.accountFees.forEach(accountFee => {
-                        const accountBreakdown = document.createElement('div');
-                        accountBreakdown.className = 'account-breakdown';
-                        accountBreakdown.innerHTML = `<h5>${accountFee.name} (${formatCurrency(accountFee.balance)})</h5>`;
-                        
-                        // Get detailed breakdown
-                        const breakdown = calculateDetailedFeeBreakdown(
-                            platform.name,
-                            accountFee.balance,
-                            accountFee.type,
-                            accountDetails
-                        );
-                        
-                        // Admin fee breakdown
-                        if (breakdown.adminFeeComponents.length > 0) {
-                            const adminSection = document.createElement('div');
-                            adminSection.className = 'fee-section';
-                            adminSection.innerHTML = '<h6>Admin Fee:</h6>';
-                            
-                            breakdown.adminFeeComponents.forEach(component => {
-                                const componentDiv = document.createElement('div');
-                                componentDiv.className = 'fee-component';
-                                componentDiv.innerHTML = `
-                                    <span class="component-description">${component.description}</span>
-                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
-                                `;
-                                adminSection.appendChild(componentDiv);
-                            });
-                            
-                            accountBreakdown.appendChild(adminSection);
-                        }
-                        
-                        // Expense fee breakdown
-                        if (breakdown.expenseFeeComponents.length > 0) {
-                            const expenseSection = document.createElement('div');
-                            expenseSection.className = 'fee-section';
-                            expenseSection.innerHTML = '<h6>Expense Recovery Fee:</h6>';
-                            
-                            breakdown.expenseFeeComponents.forEach(component => {
-                                const componentDiv = document.createElement('div');
-                                componentDiv.className = 'fee-component';
-                                componentDiv.innerHTML = `
-                                    <span class="component-description">${component.description}</span>
-                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
-                                `;
-                                expenseSection.appendChild(componentDiv);
-                            });
-                            
-                            accountBreakdown.appendChild(expenseSection);
-                        }
-                        
-                        // Total for this account
-                        const totalDiv = document.createElement('div');
-                        totalDiv.className = 'account-total';
-                        totalDiv.innerHTML = `
-                            <span>Account Total:</span>
-                            <span>${formatCurrency(accountFee.totalFee)}</span>
-                        `;
-                        accountBreakdown.appendChild(totalDiv);
-                        
-                        breakdownContainer.appendChild(accountBreakdown);
-                    });
-                }
-            });
-        } else {
-            // Expanded view - show fees by account
-            platformsData.forEach(platform => {
-                const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
-                
-                // Add account rows
+        // Add rows to table - merged view only
+        platformsData.forEach(platform => {
+            const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+            const row = document.createElement('tr');
+            row.className = platform.isCurrent ? 'current-platform' : '';
+            
+            row.innerHTML = `
+                <td>
+                    <span class="expand-icon" id="expand-${platformId}" onclick="toggleFeeDetails('${platformId}')" style="cursor: pointer; margin-right: 8px;">▶</span>
+                    <span class="platform-name">${platform.name}${platform.isCurrent ? ' (Selected)' : ''}</span>
+                </td>
+                <td>${formatCurrency(platform.adminFee)}</td>
+                <td>${formatCurrency(platform.expenseFee)}</td>
+                <td>${formatCurrency(platform.totalFee)}</td>
+            `;
+            
+            feeComparisonTable.appendChild(row);
+            
+            // Add expandable details row
+            const detailsRow = document.createElement('tr');
+            detailsRow.id = `details-${platformId}`;
+            detailsRow.className = 'fee-details-row hidden';
+            detailsRow.innerHTML = `
+                <td colspan="4">
+                    <div class="fee-breakdown-container">
+                        <h4>Fee Calculation Breakdown</h4>
+                        <div id="breakdown-${platformId}"></div>
+                    </div>
+                </td>
+            `;
+            feeComparisonTable.appendChild(detailsRow);
+            
+            // Populate breakdown details
+            const breakdownContainer = document.getElementById(`breakdown-${platformId}`);
+            if (breakdownContainer && platform.accountFees.length > 0) {
                 platform.accountFees.forEach(accountFee => {
-                    const row = document.createElement('tr');
-                    row.className = 'account-row';
+                    const accountBreakdown = document.createElement('div');
+                    accountBreakdown.className = 'account-breakdown';
+                    accountBreakdown.innerHTML = `<h5>${accountFee.name} (${formatCurrency(accountFee.balance)})</h5>`;
                     
-                    row.innerHTML = `
-                        <td style="padding-left: 40px;">${accountFee.name}</td>
-                        <td>${formatCurrency(accountFee.adminFee)}</td>
-                        <td>${formatCurrency(accountFee.expenseFee)}</td>
-                        <td>${formatCurrency(accountFee.totalFee)}</td>
+                    // Get detailed breakdown
+                    const breakdown = calculateDetailedFeeBreakdown(
+                        platform.name,
+                        accountFee.balance,
+                        accountFee.type,
+                        accountDetails
+                    );
+                    
+                    // Admin fee breakdown
+                    if (breakdown.adminFeeComponents.length > 0) {
+                        const adminSection = document.createElement('div');
+                        adminSection.className = 'fee-section';
+                        adminSection.innerHTML = '<h6>Admin Fee:</h6>';
+                        
+                        breakdown.adminFeeComponents.forEach(component => {
+                            const componentDiv = document.createElement('div');
+                            componentDiv.className = 'fee-component';
+                            componentDiv.innerHTML = `
+                                <span class="component-description">${component.description}</span>
+                                <span class="component-amount">${formatCurrency(component.amount)}</span>
+                            `;
+                            adminSection.appendChild(componentDiv);
+                        });
+                        
+                        accountBreakdown.appendChild(adminSection);
+                    }
+                    
+                    // Expense fee breakdown
+                    if (breakdown.expenseFeeComponents.length > 0) {
+                        const expenseSection = document.createElement('div');
+                        expenseSection.className = 'fee-section';
+                        expenseSection.innerHTML = '<h6>Expense Recovery Fee:</h6>';
+                        
+                        breakdown.expenseFeeComponents.forEach(component => {
+                            const componentDiv = document.createElement('div');
+                            componentDiv.className = 'fee-component';
+                            componentDiv.innerHTML = `
+                                <span class="component-description">${component.description}</span>
+                                <span class="component-amount">${formatCurrency(component.amount)}</span>
+                            `;
+                            expenseSection.appendChild(componentDiv);
+                        });
+                        
+                        accountBreakdown.appendChild(expenseSection);
+                    }
+                    
+                    // Total for this account
+                    const totalDiv = document.createElement('div');
+                    totalDiv.className = 'account-total';
+                    totalDiv.innerHTML = `
+                        <span>Account Total:</span>
+                        <span>${formatCurrency(accountFee.totalFee)}</span>
                     `;
+                    accountBreakdown.appendChild(totalDiv);
                     
-                    feeComparisonTable.appendChild(row);
+                    breakdownContainer.appendChild(accountBreakdown);
                 });
-                
-                // Add platform total row
-                const totalRow = document.createElement('tr');
-                totalRow.className = `platform-total-row ${platform.isCurrent ? 'current-platform' : ''}`;
-                
-                totalRow.innerHTML = `
-                    <td style="font-weight: bold;">
-                        <span class="expand-icon" id="expand-${platformId}" onclick="toggleFeeDetails('${platformId}')" style="cursor: pointer; margin-right: 8px;">▶</span>
-                        ${platform.name}${platform.isCurrent ? ' (Selected)' : ''} Total
-                    </td>
-                    <td style="font-weight: bold;">${formatCurrency(platform.adminFee)}</td>
-                    <td style="font-weight: bold;">${formatCurrency(platform.expenseFee)}</td>
-                    <td style="font-weight: bold;">${formatCurrency(platform.totalFee)}</td>
-                `;
-                
-                feeComparisonTable.appendChild(totalRow);
-                
-                // Add expandable details row
-                const detailsRow = document.createElement('tr');
-                detailsRow.id = `details-${platformId}`;
-                detailsRow.className = 'fee-details-row hidden';
-                detailsRow.innerHTML = `
-                    <td colspan="4">
-                        <div class="fee-breakdown-container">
-                            <h4>Fee Calculation Breakdown</h4>
-                            <div id="breakdown-${platformId}"></div>
-                        </div>
-                    </td>
-                `;
-                feeComparisonTable.appendChild(detailsRow);
-                
-                // Populate breakdown details (same as merged view)
-                const breakdownContainer = document.getElementById(`breakdown-${platformId}`);
-                if (breakdownContainer && platform.accountFees.length > 0) {
-                    platform.accountFees.forEach(accountFee => {
-                        const accountBreakdown = document.createElement('div');
-                        accountBreakdown.className = 'account-breakdown';
-                        accountBreakdown.innerHTML = `<h5>${accountFee.name} (${formatCurrency(accountFee.balance)})</h5>`;
-                        
-                        // Get detailed breakdown
-                        const breakdown = calculateDetailedFeeBreakdown(
-                            platform.name,
-                            accountFee.balance,
-                            accountFee.type,
-                            accountDetails
-                        );
-                        
-                        // Admin fee breakdown
-                        if (breakdown.adminFeeComponents.length > 0) {
-                            const adminSection = document.createElement('div');
-                            adminSection.className = 'fee-section';
-                            adminSection.innerHTML = '<h6>Admin Fee:</h6>';
-                            
-                            breakdown.adminFeeComponents.forEach(component => {
-                                const componentDiv = document.createElement('div');
-                                componentDiv.className = 'fee-component';
-                                componentDiv.innerHTML = `
-                                    <span class="component-description">${component.description}</span>
-                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
-                                `;
-                                adminSection.appendChild(componentDiv);
-                            });
-                            
-                            accountBreakdown.appendChild(adminSection);
-                        }
-                        
-                        // Expense fee breakdown
-                        if (breakdown.expenseFeeComponents.length > 0) {
-                            const expenseSection = document.createElement('div');
-                            expenseSection.className = 'fee-section';
-                            expenseSection.innerHTML = '<h6>Expense Recovery Fee:</h6>';
-                            
-                            breakdown.expenseFeeComponents.forEach(component => {
-                                const componentDiv = document.createElement('div');
-                                componentDiv.className = 'fee-component';
-                                componentDiv.innerHTML = `
-                                    <span class="component-description">${component.description}</span>
-                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
-                                `;
-                                expenseSection.appendChild(componentDiv);
-                            });
-                            
-                            accountBreakdown.appendChild(expenseSection);
-                        }
-                        
-                        // Total for this account
-                        const totalDiv = document.createElement('div');
-                        totalDiv.className = 'account-total';
-                        totalDiv.innerHTML = `
-                            <span>Account Total:</span>
-                            <span>${formatCurrency(accountFee.totalFee)}</span>
-                        `;
-                        accountBreakdown.appendChild(totalDiv);
-                        
-                        breakdownContainer.appendChild(accountBreakdown);
-                    });
-                }
-                
-                // Add separator row
-                const separatorRow = document.createElement('tr');
-                separatorRow.className = 'separator-row';
-                separatorRow.innerHTML = '<td colspan="4"></td>';
-                feeComparisonTable.appendChild(separatorRow);
-            });
-        }
+            }
+        });
         
         // Update IDPS and Super totals if needed
         const idpsTotalBalanceCell = document.getElementById('idps-total-balance');
@@ -1962,12 +1759,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('set-current-platform').addEventListener('change', toggleCurrentPlatformSelector);
         document.getElementById('platform-preference').addEventListener('change', toggleCustomText);
         document.getElementById('save-current-platforms').addEventListener('click', saveCurrentPlatforms);
-        
-        // Fee view mode toggle
-        document.getElementById('fee-view-mode').addEventListener('change', function() {
-            feeViewMode = this.value;
-            calculate();
-        });
         
         // Update download listeners
         document.getElementById('download-csv').addEventListener('click', downloadComparison);
