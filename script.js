@@ -1085,15 +1085,9 @@ function downloadPDF() {
         let yPosition = 75;
         
         // Client preference if set
+      // Client preference if set
         const preferenceValue = document.getElementById('platform-preference').value;
         if (preferenceValue !== 'standard') {
-            doc.setFillColor(248, 249, 250);
-            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, 25, 3, 3, 'F');
-            
-            doc.setFontSize(12);
-            doc.setTextColor(40, 40, 40);
-            doc.text('Client Platform Preference:', 25, yPosition + 6);
-            
             let preferenceText = '';
             if (preferenceValue === 'no-online') {
                 preferenceText = 'The client has expressed a desire to use a simple platform without online complexity.';
@@ -1102,19 +1096,54 @@ function downloadPDF() {
                 preferenceText = customText || 'Custom preference (no details provided).';
             }
             
+            // Calculate required height for the preference box
+            const maxWidth = doc.internal.pageSize.getWidth() - 50;
+            doc.setFontSize(10);
+            const splitText = doc.splitTextToSize(preferenceText, maxWidth);
+            const requiredHeight = 15 + (splitText.length * 5);
+            
+            // Check if we need a new page
+            if (yPosition + requiredHeight > 270) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            // Draw background box
+            doc.setFillColor(248, 249, 250);
+            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, requiredHeight, 3, 3, 'F');
+            
+            // Add title
+            doc.setFontSize(12);
+            doc.setTextColor(40, 40, 40);
+            doc.text('Client Platform Preference:', 25, yPosition + 8);
+            
+            // Add preference text
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
             
-            // Wrap long text properly
-            const maxWidth = doc.internal.pageSize.getWidth() - 50;
-            const splitText = doc.splitTextToSize(preferenceText, maxWidth);
-            let textY = yPosition + 12;
-            splitText.forEach(line => {
-                doc.text(line, 25, textY);
+            let textY = yPosition + 15;
+            splitText.forEach((line, index) => {
+                // Check if we need a new page mid-text
+                if (textY > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                    textY = 25;
+                    
+                    // Continue with remaining text
+                    doc.setFillColor(248, 249, 250);
+                    const remainingHeight = (splitText.length - index) * 5 + 10;
+                    doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, remainingHeight, 3, 3, 'F');
+                    doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
+                }
+                
+                // Clean the text to remove any special characters
+                const cleanLine = line.replace(/[^\x20-\x7E]/g, '');
+                doc.text(cleanLine, 25, textY);
                 textY += 5;
             });
             
-            yPosition += 10 + (splitText.length * 5) + 5;
+            yPosition = textY + 10;
         }
         
         // Add account tables if we have accounts
@@ -1300,6 +1329,7 @@ function downloadPDF() {
         }
         
         // Generate fee comparison table
+        // Generate fee comparison table
         doc.autoTable({
             startY: yPosition,
             head: [['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)']],
@@ -1308,17 +1338,18 @@ function downloadPDF() {
             headStyles: {
                 fillColor: [68, 114, 196],
                 textColor: [255, 255, 255],
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                fontSize: 11
             },
             styles: {
                 fontSize: 10,
                 cellPadding: 3
             },
             columnStyles: {
-                0: { halign: 'left' },
-                1: { halign: 'right' },
-                2: { halign: 'right' },
-                3: { halign: 'right' }
+                0: { halign: 'left', cellWidth: 'auto' },
+                1: { halign: 'right', cellWidth: 40 },
+                2: { halign: 'right', cellWidth: 40 },
+                3: { halign: 'right', cellWidth: 40 }
             },
             // Highlight current platform rows
             didParseCell: function(data) {
@@ -1331,7 +1362,10 @@ function downloadPDF() {
                         data.cell.styles.lineColor = { left: [112, 173, 71] }; // Green
                     }
                 }
-            }
+            },
+            // Ensure platform names are visible
+            showHead: 'everyPage',
+            margin: { top: 10 }
         });
         
         yPosition = doc.lastAutoTable.finalY + 10;
@@ -1359,30 +1393,59 @@ function downloadPDF() {
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         
-        noteLines.forEach(line => {
+        noteLines.forEach((line, lineIndex) => {
+            // Clean the text to remove any special characters
+            const cleanLine = line.replace(/[^\x20-\x7E]/g, '');
+            
             // Check if we need to wrap text
-            const textWidth = doc.getStringUnitWidth(line) * 9 / doc.internal.scaleFactor;
+            const textWidth = doc.getStringUnitWidth(cleanLine) * 9 / doc.internal.scaleFactor;
             const maxWidth = doc.internal.pageSize.getWidth() - 40;
             
             if (textWidth > maxWidth) {
-                const splitLines = doc.splitTextToSize(line, maxWidth);
+                const splitLines = doc.splitTextToSize(cleanLine, maxWidth);
                 splitLines.forEach(splitLine => {
+                    // Check if we need a new page
+                    if (yPosition > 275) {
+                        doc.addPage();
+                        yPosition = 20;
+                        
+                        // Re-add section header if continuing notes
+                        if (lineIndex > 0) {
+                            doc.setFontSize(12);
+                            doc.setTextColor(40, 40, 40);
+                            doc.text('Notes (continued):', 20, yPosition);
+                            yPosition += 8;
+                            doc.setFontSize(9);
+                            doc.setTextColor(100, 100, 100);
+                        }
+                    }
+                    
                     doc.text(splitLine, 20, yPosition);
                     yPosition += 5;
                 });
             } else {
-                doc.text(line, 20, yPosition);
+                // Check if we need a new page
+                if (yPosition > 275) {
+                    doc.addPage();
+                    yPosition = 20;
+                    
+                    // Re-add section header if continuing notes
+                    if (lineIndex > 0) {
+                        doc.setFontSize(12);
+                        doc.setTextColor(40, 40, 40);
+                        doc.text('Notes (continued):', 20, yPosition);
+                        yPosition += 8;
+                        doc.setFontSize(9);
+                        doc.setTextColor(100, 100, 100);
+                    }
+                }
+                
+                doc.text(cleanLine, 20, yPosition);
                 yPosition += 5;
             }
             
             // Add a bit of spacing between notes
             yPosition += 1;
-            
-            // Check if we need a new page
-            if (yPosition > 280) {
-                doc.addPage();
-                yPosition = 20;
-            }
         });
         
         // Add disclaimer at the bottom of the last page
