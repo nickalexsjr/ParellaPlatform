@@ -4,6 +4,8 @@ let accountDetails = {
     idps: [],
     super: []
 };
+let expandedPlatforms = {};
+let feeViewMode = 'merged';
 
 // Number formatting function
 function formatCurrency(number) {
@@ -270,6 +272,376 @@ const productFees = {
     }
 };
 
+// Calculate detailed fee breakdown for a platform and account
+function calculateDetailedFeeBreakdown(platform, accountBalance, accountType, allAccounts) {
+    let breakdown = {
+        adminFeeComponents: [],
+        expenseFeeComponents: [],
+        totalAdminFee: 0,
+        totalExpenseFee: 0
+    };
+    
+    // Get the appropriate platform for the account type
+    let platformToUse = platform;
+    if (platform === "CFS Edge Super" && accountType === 'idps') {
+        platformToUse = "CFS Edge Investment";
+    } else if (platform === "CFS Edge Investment" && accountType === 'super') {
+        platformToUse = "CFS Edge Super";
+    } else if (platform === "Centric" && accountType === 'super') {
+        platformToUse = "Centric Choice";
+    } else if (platform === "Centric One" && accountType === 'idps') {
+        return breakdown; // Centric One not available for IDPS
+    }
+    
+    // Calculate admin fee with breakdown
+    if (platformToUse === "BT Panorama (Compact Menu)" || platformToUse === "BT Panorama (Full Menu)") {
+        const fixedFee = platformToUse === "BT Panorama (Compact Menu)" ? 180 : 540;
+        breakdown.adminFeeComponents.push({
+            description: "Fixed annual fee",
+            amount: fixedFee
+        });
+        
+        // Calculate total BT balance
+        let totalBTBalance = 0;
+        allAccounts.idps.forEach(account => totalBTBalance += account.balance);
+        allAccounts.super.forEach(account => totalBTBalance += account.balance);
+        
+        // Calculate percentage component
+        let percentageFee = 0;
+        if (totalBTBalance <= 1000000) {
+            percentageFee = totalBTBalance * 0.0015;
+            breakdown.adminFeeComponents.push({
+                description: `0.15% on total balance of ${formatCurrency(totalBTBalance)}`,
+                amount: percentageFee * (accountBalance / totalBTBalance)
+            });
+        } else {
+            percentageFee = 1000000 * 0.0015;
+            breakdown.adminFeeComponents.push({
+                description: `0.15% on first $1,000,000 (proportional share)`,
+                amount: percentageFee * (accountBalance / totalBTBalance)
+            });
+        }
+        
+        breakdown.totalAdminFee = fixedFee + (percentageFee * (accountBalance / totalBTBalance));
+        
+    } else if (platformToUse === "Centric") {
+        breakdown.adminFeeComponents.push({
+            description: "Fixed annual fee",
+            amount: 450
+        });
+        breakdown.totalAdminFee = 450;
+        
+    } else if (platformToUse === "Centric Choice") {
+        breakdown.adminFeeComponents.push({
+            description: "Fixed annual fee",
+            amount: 528
+        });
+        breakdown.totalAdminFee = 528;
+        
+    } else if (platformToUse === "Centric One") {
+        const fee = accountBalance * 0.002583;
+        breakdown.adminFeeComponents.push({
+            description: `0.2583% of balance ${formatCurrency(accountBalance)}`,
+            amount: fee
+        });
+        breakdown.totalAdminFee = fee;
+        
+    } else if (platformToUse === "Portfolio Solutions") {
+        if (accountType === 'super') {
+            // Super/Pension tiered structure
+            if (accountBalance <= 84000) {
+                const fee = accountBalance * 0.008929;
+                breakdown.adminFeeComponents.push({
+                    description: `0.8929% on ${formatCurrency(accountBalance)}`,
+                    amount: fee
+                });
+                breakdown.totalAdminFee = fee;
+            } else if (accountBalance <= 300000) {
+                const tier1 = 84000 * 0.008929;
+                breakdown.adminFeeComponents.push({
+                    description: "0.8929% on first $84,000",
+                    amount: tier1
+                });
+                breakdown.adminFeeComponents.push({
+                    description: `0% on next $${formatNumber(accountBalance - 84000)}`,
+                    amount: 0
+                });
+                breakdown.totalAdminFee = tier1;
+            } else if (accountBalance <= 850000) {
+                const tier1 = 84000 * 0.008929;
+                const tier3 = (accountBalance - 300000) * 0.0025;
+                breakdown.adminFeeComponents.push({
+                    description: "0.8929% on first $84,000",
+                    amount: tier1
+                });
+                breakdown.adminFeeComponents.push({
+                    description: "0% on next $216,000",
+                    amount: 0
+                });
+                breakdown.adminFeeComponents.push({
+                    description: `0.25% on next $${formatNumber(accountBalance - 300000)}`,
+                    amount: tier3
+                });
+                breakdown.totalAdminFee = tier1 + tier3;
+            } else {
+                const tier1 = 84000 * 0.008929;
+                const tier3 = 550000 * 0.0025;
+                breakdown.adminFeeComponents.push({
+                    description: "0.8929% on first $84,000",
+                    amount: tier1
+                });
+                breakdown.adminFeeComponents.push({
+                    description: "0% on next $216,000",
+                    amount: 0
+                });
+                breakdown.adminFeeComponents.push({
+                    description: "0.25% on next $550,000",
+                    amount: tier3
+                });
+                breakdown.adminFeeComponents.push({
+                    description: `0% on balance above $850,000`,
+                    amount: 0
+                });
+                breakdown.totalAdminFee = tier1 + tier3;
+            }
+            
+            // Apply minimum fee
+            if (breakdown.totalAdminFee < 540) {
+                breakdown.adminFeeComponents = [{
+                    description: "Minimum annual fee ($45/month)",
+                    amount: 540
+                }];
+                breakdown.totalAdminFee = 540;
+            }
+        } else {
+            // IDPS fee structure
+            if (accountBalance >= 1000000) {
+                breakdown.adminFeeComponents.push({
+                    description: "Flat fee for balances over $1M",
+                    amount: 2125
+                });
+                breakdown.totalAdminFee = 2125;
+            } else {
+                // Calculate tiered fees
+                if (accountBalance <= 84000) {
+                    const fee = accountBalance * 0.008929;
+                    breakdown.adminFeeComponents.push({
+                        description: `0.8929% on ${formatCurrency(accountBalance)}`,
+                        amount: fee
+                    });
+                    breakdown.totalAdminFee = fee;
+                } else {
+                    const tier1 = 84000 * 0.008929;
+                    breakdown.adminFeeComponents.push({
+                        description: "0.8929% on first $84,000",
+                        amount: tier1
+                    });
+                    breakdown.totalAdminFee = tier1;
+                    
+                    if (accountBalance > 84000 && accountBalance <= 300000) {
+                        const tier2 = (accountBalance - 84000) * 0.00625;
+                        breakdown.adminFeeComponents.push({
+                            description: `0.625% on next $${formatNumber(accountBalance - 84000)}`,
+                            amount: tier2
+                        });
+                        breakdown.totalAdminFee += tier2;
+                    } else if (accountBalance > 300000) {
+                        const tier2 = 216000 * 0.00625;
+                        breakdown.adminFeeComponents.push({
+                            description: "0.625% on next $216,000",
+                            amount: tier2
+                        });
+                        breakdown.totalAdminFee += tier2;
+                        
+                        if (accountBalance <= 500000) {
+                            const tier3 = (accountBalance - 300000) * 0.00375;
+                            breakdown.adminFeeComponents.push({
+                                description: `0.375% on next $${formatNumber(accountBalance - 300000)}`,
+                                amount: tier3
+                            });
+                            breakdown.totalAdminFee += tier3;
+                        } else {
+                            const tier3 = 200000 * 0.00375;
+                            breakdown.adminFeeComponents.push({
+                                description: "0.375% on next $200,000",
+                                amount: tier3
+                            });
+                            breakdown.totalAdminFee += tier3;
+                            
+                            const tier4 = (accountBalance - 500000) * 0.00225;
+                            breakdown.adminFeeComponents.push({
+                                description: `0.225% on next $${formatNumber(accountBalance - 500000)}`,
+                                amount: tier4
+                            });
+                            breakdown.totalAdminFee += tier4;
+                        }
+                    }
+                }
+            }
+        }
+        
+    } else if (platformToUse === "CFS Edge Super") {
+        // Tiered structure
+        if (accountBalance <= 500000) {
+            const fee = accountBalance * 0.0028;
+            breakdown.adminFeeComponents.push({
+                description: `0.28% on ${formatCurrency(accountBalance)}`,
+                amount: fee
+            });
+            breakdown.totalAdminFee = fee;
+        } else {
+            const tier1 = 500000 * 0.0028;
+            breakdown.adminFeeComponents.push({
+                description: "0.28% on first $500,000",
+                amount: tier1
+            });
+            breakdown.totalAdminFee = tier1;
+            
+            if (accountBalance <= 1000000) {
+                const tier2 = (accountBalance - 500000) * 0.0013;
+                breakdown.adminFeeComponents.push({
+                    description: `0.13% on next $${formatNumber(accountBalance - 500000)}`,
+                    amount: tier2
+                });
+                breakdown.totalAdminFee += tier2;
+            } else {
+                const tier2 = 500000 * 0.0013;
+                breakdown.adminFeeComponents.push({
+                    description: "0.13% on next $500,000",
+                    amount: tier2
+                });
+                breakdown.totalAdminFee += tier2;
+                
+                if (accountBalance <= 3000000) {
+                    const tier3 = (accountBalance - 1000000) * 0.0005;
+                    breakdown.adminFeeComponents.push({
+                        description: `0.05% on next $${formatNumber(accountBalance - 1000000)}`,
+                        amount: tier3
+                    });
+                    breakdown.totalAdminFee += tier3;
+                } else {
+                    const tier3 = 2000000 * 0.0005;
+                    breakdown.adminFeeComponents.push({
+                        description: "0.05% on next $2,000,000",
+                        amount: tier3
+                    });
+                    breakdown.totalAdminFee += tier3;
+                    
+                    breakdown.adminFeeComponents.push({
+                        description: `0% on balance above $3,000,000`,
+                        amount: 0
+                    });
+                }
+            }
+        }
+        
+    } else if (platformToUse === "CFS Edge Investment") {
+        // Tiered structure
+        if (accountBalance <= 500000) {
+            const fee = accountBalance * 0.0025;
+            breakdown.adminFeeComponents.push({
+                description: `0.25% on ${formatCurrency(accountBalance)}`,
+                amount: fee
+            });
+            breakdown.totalAdminFee = fee;
+        } else {
+            const tier1 = 500000 * 0.0025;
+            breakdown.adminFeeComponents.push({
+                description: "0.25% on first $500,000",
+                amount: tier1
+            });
+            breakdown.totalAdminFee = tier1;
+            
+            if (accountBalance <= 1000000) {
+                const tier2 = (accountBalance - 500000) * 0.0010;
+                breakdown.adminFeeComponents.push({
+                    description: `0.10% on next $${formatNumber(accountBalance - 500000)}`,
+                    amount: tier2
+                });
+                breakdown.totalAdminFee += tier2;
+            } else {
+                const tier2 = 500000 * 0.0010;
+                breakdown.adminFeeComponents.push({
+                    description: "0.10% on next $500,000",
+                    amount: tier2
+                });
+                breakdown.totalAdminFee += tier2;
+                
+                if (accountBalance <= 3000000) {
+                    const tier3 = (accountBalance - 1000000) * 0.0005;
+                    breakdown.adminFeeComponents.push({
+                        description: `0.05% on next $${formatNumber(accountBalance - 1000000)}`,
+                        amount: tier3
+                    });
+                    breakdown.totalAdminFee += tier3;
+                } else {
+                    const tier3 = 2000000 * 0.0005;
+                    breakdown.adminFeeComponents.push({
+                        description: "0.05% on next $2,000,000",
+                        amount: tier3
+                    });
+                    breakdown.totalAdminFee += tier3;
+                    
+                    breakdown.adminFeeComponents.push({
+                        description: `0% on balance above $3,000,000`,
+                        amount: 0
+                    });
+                }
+            }
+        }
+    }
+    
+    // Calculate expense fee breakdown
+    if (platformToUse === "BT Panorama (Compact Menu)" || platformToUse === "BT Panorama (Full Menu)") {
+        breakdown.expenseFeeComponents.push({
+            description: "Fixed expense recovery fee",
+            amount: 95
+        });
+        const percentageFee = accountBalance * 0.0003;
+        breakdown.expenseFeeComponents.push({
+            description: `0.03% of balance ${formatCurrency(accountBalance)}`,
+            amount: percentageFee
+        });
+        breakdown.totalExpenseFee = 95 + percentageFee;
+        
+    } else if (platformToUse === "Centric Choice") {
+        breakdown.expenseFeeComponents.push({
+            description: "Fixed expense recovery fee",
+            amount: 132
+        });
+        breakdown.totalExpenseFee = 132;
+        
+    } else if (platformToUse === "Portfolio Solutions") {
+        breakdown.expenseFeeComponents.push({
+            description: "Fixed expense recovery fee",
+            amount: 155
+        });
+        const percentageFee = accountBalance * 0.0003;
+        breakdown.expenseFeeComponents.push({
+            description: `0.03% of balance ${formatCurrency(accountBalance)}`,
+            amount: percentageFee
+        });
+        breakdown.totalExpenseFee = 155 + percentageFee;
+        
+    } else {
+        // No expense fees for Centric, Centric One, CFS Edge platforms
+        breakdown.totalExpenseFee = 0;
+    }
+    
+    return breakdown;
+}
+
+// Toggle fee details display
+function toggleFeeDetails(platformId) {
+    const detailsRow = document.getElementById(`details-${platformId}`);
+    const expandIcon = document.getElementById(`expand-${platformId}`);
+    
+    if (detailsRow) {
+        detailsRow.classList.toggle('hidden');
+        expandIcon.textContent = detailsRow.classList.contains('hidden') ? '▶' : '▼';
+    }
+}
+
 // Update accounts visibility based on selections
 function updateAccountsVisibility() {
     try {
@@ -508,7 +880,7 @@ function showSaveConfirmation() {
         
         // Add content
         const title = document.createElement('h3');
-        title.textContent = 'Current Platform(s) Saved';
+        title.textContent = 'Selected Platform(s) Saved';
         title.style.marginTop = '0';
         
         const message = document.createElement('p');
@@ -574,21 +946,65 @@ function downloadComparison() {
         
         const rows = table.querySelectorAll('tr');
         
-        // Create CSV content
-        let csvContent = "Platform,Admin Fee,Expense Recovery,Total Fee\n";
+        // Create CSV content based on view mode
+        let csvContent = "";
         
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length > 0) {
-                const rowData = [
-                    cells[0].textContent.trim(),
-                    cells[1].textContent.trim().replace('$', '').replace(',', ''),
-                    cells[2].textContent.trim().replace('$', '').replace(',', ''),
-                    cells[3].textContent.trim().replace('$', '').replace(',', '')
-                ];
-                csvContent += rowData.join(',') + '\n';
-            }
-        });
+        if (feeViewMode === 'merged') {
+            csvContent = "Platform,Admin Fee,Expense Recovery,Total Fee\n";
+            
+            rows.forEach(row => {
+                // Skip detail rows
+                if (row.classList.contains('fee-details-row')) return;
+                
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    // Check if it's a regular platform row
+                    const platformCell = cells[0].querySelector('.platform-name');
+                    if (platformCell) {
+                        const rowData = [
+                            platformCell.textContent.trim(),
+                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[3].textContent.trim().replace('$', '').replace(',', '')
+                        ];
+                        csvContent += rowData.join(',') + '\n';
+                    }
+                }
+            });
+        } else {
+            // Expanded view
+            csvContent = "Platform,Account,Admin Fee,Expense Recovery,Total Fee\n";
+            
+            rows.forEach(row => {
+                // Skip detail rows
+                if (row.classList.contains('fee-details-row')) return;
+                
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    if (row.classList.contains('account-row')) {
+                        // Account row
+                        const rowData = [
+                            '', // Empty platform name for account rows
+                            cells[0].textContent.trim(),
+                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[3].textContent.trim().replace('$', '').replace(',', '')
+                        ];
+                        csvContent += rowData.join(',') + '\n';
+                    } else if (row.classList.contains('platform-total-row')) {
+                        // Platform total row
+                        const rowData = [
+                            cells[0].textContent.trim().replace(' Total', ''),
+                            'Total',
+                            cells[1].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[2].textContent.trim().replace('$', '').replace(',', ''),
+                            cells[3].textContent.trim().replace('$', '').replace(',', '')
+                        ];
+                        csvContent += rowData.join(',') + '\n';
+                    }
+                }
+            });
+        }
         
         // Create and download the file
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -607,7 +1023,7 @@ function downloadComparison() {
     }
 }
 
-// Download comparison as PDF - Direct jsPDF implementation
+// Download comparison as PDF
 function downloadPDF() {
     try {
         // Show loading indication on the button
@@ -638,7 +1054,7 @@ function downloadPDF() {
         doc.text('Financial Planning Analysis', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
         
         // Add horizontal line
-        doc.setDrawColor(68, 114, 196); // #4472C4
+        doc.setDrawColor(68, 114, 196);
         doc.setLineWidth(0.5);
         doc.line(20, 32, doc.internal.pageSize.getWidth() - 20, 32);
         
@@ -663,7 +1079,7 @@ function downloadPDF() {
         doc.text('Total Account Balance', doc.internal.pageSize.getWidth() / 2, 53, { align: 'center' });
         
         doc.setFontSize(16);
-        doc.setTextColor(68, 114, 196); // #4472C4
+        doc.setTextColor(68, 114, 196);
         doc.text(formatCurrency(totalBalance), doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
         
         let yPosition = 75;
@@ -672,7 +1088,7 @@ function downloadPDF() {
         const preferenceValue = document.getElementById('platform-preference').value;
         if (preferenceValue !== 'standard') {
             doc.setFillColor(248, 249, 250);
-            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, 15, 3, 3, 'F');
+            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, 25, 3, 3, 'F');
             
             doc.setFontSize(12);
             doc.setTextColor(40, 40, 40);
@@ -688,9 +1104,17 @@ function downloadPDF() {
             
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
-            doc.text(preferenceText, 30, yPosition + 12);
             
-            yPosition += 22;
+            // Wrap long text properly
+            const maxWidth = doc.internal.pageSize.getWidth() - 50;
+            const splitText = doc.splitTextToSize(preferenceText, maxWidth);
+            let textY = yPosition + 12;
+            splitText.forEach(line => {
+                doc.text(line, 25, textY);
+                textY += 5;
+            });
+            
+            yPosition += 10 + (splitText.length * 5) + 5;
         }
         
         // Add account tables if we have accounts
@@ -815,19 +1239,65 @@ function downloadPDF() {
         // Track which rows are current platforms
         const currentPlatformRows = [];
         
-        originalRows.forEach((origRow, rowIndex) => {
-            const cells = origRow.querySelectorAll('td');
-            if (cells.length === 0) return;
-            
-            const rowData = [];
-            cells.forEach(cell => rowData.push(cell.textContent.trim()));
-            
-            feeTableData.push(rowData);
-            
-            if (origRow.classList.contains('current-platform')) {
-                currentPlatformRows.push(feeTableData.length - 1);
-            }
-        });
+        if (feeViewMode === 'merged') {
+            // Merged view - simple extraction
+            originalRows.forEach((origRow, rowIndex) => {
+                if (origRow.classList.contains('fee-details-row')) return;
+                
+                const cells = origRow.querySelectorAll('td');
+                if (cells.length === 0) return;
+                
+                const platformNameEl = cells[0].querySelector('.platform-name');
+                if (!platformNameEl) return;
+                
+                const rowData = [];
+                rowData.push(platformNameEl.textContent.trim());
+                cells.forEach((cell, idx) => {
+                    if (idx > 0) rowData.push(cell.textContent.trim());
+                });
+                
+                feeTableData.push(rowData);
+                
+                if (origRow.classList.contains('current-platform')) {
+                    currentPlatformRows.push(feeTableData.length - 1);
+                }
+            });
+        } else {
+            // Expanded view - more complex extraction
+            let currentPlatform = '';
+            originalRows.forEach((origRow) => {
+                if (origRow.classList.contains('fee-details-row')) return;
+                
+                const cells = origRow.querySelectorAll('td');
+                if (cells.length === 0) return;
+                
+                if (origRow.classList.contains('platform-total-row')) {
+                    // Platform total row
+                    const platformName = cells[0].textContent.trim().replace(' Total', '');
+                    currentPlatform = platformName;
+                    const rowData = [
+                        platformName + ' Total',
+                        cells[1].textContent.trim(),
+                        cells[2].textContent.trim(),
+                        cells[3].textContent.trim()
+                    ];
+                    feeTableData.push(rowData);
+                    
+                    if (origRow.classList.contains('current-platform')) {
+                        currentPlatformRows.push(feeTableData.length - 1);
+                    }
+                } else if (origRow.classList.contains('account-row')) {
+                    // Account row
+                    const rowData = [
+                        '  ' + cells[0].textContent.trim(), // Indent account names
+                        cells[1].textContent.trim(),
+                        cells[2].textContent.trim(),
+                        cells[3].textContent.trim()
+                    ];
+                    feeTableData.push(rowData);
+                }
+            });
+        }
         
         // Generate fee comparison table
         doc.autoTable({
@@ -946,9 +1416,10 @@ function downloadPDF() {
 function calculatePlatformFees(platform, allAccounts) {
     let totalAdminFee = 0;
     let totalExpenseFee = 0;
+    let accountFees = [];
     
     // Calculate fees for IDPS accounts
-    allAccounts.idps.forEach(account => {
+    allAccounts.idps.forEach((account, index) => {
         if (account.balance > 0) {
             let platformToUse = platform;
             
@@ -964,23 +1435,37 @@ function calculatePlatformFees(platform, allAccounts) {
             }
             
             if (productFees[platformToUse]) {
-                totalAdminFee += productFees[platformToUse].adminFee(
+                const adminFee = productFees[platformToUse].adminFee(
                     0, // Total balance (not used in most calculations now)
                     account.balance,
                     'idps',
                     allAccounts
                 );
                 
-                totalExpenseFee += productFees[platformToUse].expenseFee(
+                const expenseFee = productFees[platformToUse].expenseFee(
                     account.balance,
                     'idps'
                 );
+                
+                totalAdminFee += adminFee;
+                totalExpenseFee += expenseFee;
+                
+                accountFees.push({
+                    type: 'idps',
+                    index: index,
+                    name: `IDPS Account ${index + 1}`,
+                    balance: account.balance,
+                    adminFee: adminFee,
+                    expenseFee: expenseFee,
+                    totalFee: adminFee + expenseFee,
+                    platform: platformToUse
+                });
             }
         }
     });
     
     // Calculate fees for Super accounts
-    allAccounts.super.forEach(account => {
+    allAccounts.super.forEach((account, index) => {
         if (account.balance > 0) {
             let platformToUse = platform;
             
@@ -992,17 +1477,31 @@ function calculatePlatformFees(platform, allAccounts) {
             }
             
             if (productFees[platformToUse]) {
-                totalAdminFee += productFees[platformToUse].adminFee(
+                const adminFee = productFees[platformToUse].adminFee(
                     0, // Total balance (not used in most calculations now)
                     account.balance,
                     'super',
                     allAccounts
                 );
                 
-                totalExpenseFee += productFees[platformToUse].expenseFee(
+                const expenseFee = productFees[platformToUse].expenseFee(
                     account.balance,
                     'super'
                 );
+                
+                totalAdminFee += adminFee;
+                totalExpenseFee += expenseFee;
+                
+                accountFees.push({
+                    type: 'super',
+                    index: index,
+                    name: `Super/Pension Account ${index + 1}`,
+                    balance: account.balance,
+                    adminFee: adminFee,
+                    expenseFee: expenseFee,
+                    totalFee: adminFee + expenseFee,
+                    platform: platformToUse
+                });
             }
         }
     });
@@ -1010,7 +1509,8 @@ function calculatePlatformFees(platform, allAccounts) {
     return {
         adminFee: totalAdminFee,
         expenseFee: totalExpenseFee,
-        totalFee: totalAdminFee + totalExpenseFee
+        totalFee: totalAdminFee + totalExpenseFee,
+        accountFees: accountFees
     };
 }
 
@@ -1129,7 +1629,8 @@ function calculate() {
                 adminFee: fees.adminFee,
                 expenseFee: fees.expenseFee,
                 totalFee: fees.totalFee,
-                isCurrent: currentPlatforms[platform] || false
+                isCurrent: currentPlatforms[platform] || false,
+                accountFees: fees.accountFees
             });
         });
         
@@ -1149,20 +1650,231 @@ function calculate() {
         // Combine them with current platforms at the top
         platformsData = [...currentPlatformsData, ...otherPlatformsData];
         
-        // Add rows to table
-        platformsData.forEach(platform => {
-            const row = document.createElement('tr');
-            row.className = platform.isCurrent ? 'current-platform' : '';
-            
-            row.innerHTML = `
-                <td>${platform.name}${platform.isCurrent ? ' (Current)' : ''}</td>
-                <td>${formatCurrency(platform.adminFee)}</td>
-                <td>${formatCurrency(platform.expenseFee)}</td>
-                <td>${formatCurrency(platform.totalFee)}</td>
-            `;
-            
-            feeComparisonTable.appendChild(row);
-        });
+        // Add rows to table based on view mode
+        if (feeViewMode === 'merged') {
+            // Merged view - show total fees per platform
+            platformsData.forEach(platform => {
+                const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+                const row = document.createElement('tr');
+                row.className = platform.isCurrent ? 'current-platform' : '';
+                
+                row.innerHTML = `
+                    <td>
+                        <span class="expand-icon" id="expand-${platformId}" onclick="toggleFeeDetails('${platformId}')" style="cursor: pointer; margin-right: 8px;">▶</span>
+                        <span class="platform-name">${platform.name}${platform.isCurrent ? ' (Selected)' : ''}</span>
+                    </td>
+                    <td>${formatCurrency(platform.adminFee)}</td>
+                    <td>${formatCurrency(platform.expenseFee)}</td>
+                    <td>${formatCurrency(platform.totalFee)}</td>
+                `;
+                
+                feeComparisonTable.appendChild(row);
+                
+                // Add expandable details row
+                const detailsRow = document.createElement('tr');
+                detailsRow.id = `details-${platformId}`;
+                detailsRow.className = 'fee-details-row hidden';
+                detailsRow.innerHTML = `
+                    <td colspan="4">
+                        <div class="fee-breakdown-container">
+                            <h4>Fee Calculation Breakdown</h4>
+                            <div id="breakdown-${platformId}"></div>
+                        </div>
+                    </td>
+                `;
+                feeComparisonTable.appendChild(detailsRow);
+                
+                // Populate breakdown details
+                const breakdownContainer = document.getElementById(`breakdown-${platformId}`);
+                if (breakdownContainer && platform.accountFees.length > 0) {
+                    platform.accountFees.forEach(accountFee => {
+                        const accountBreakdown = document.createElement('div');
+                        accountBreakdown.className = 'account-breakdown';
+                        accountBreakdown.innerHTML = `<h5>${accountFee.name} (${formatCurrency(accountFee.balance)})</h5>`;
+                        
+                        // Get detailed breakdown
+                        const breakdown = calculateDetailedFeeBreakdown(
+                            platform.name,
+                            accountFee.balance,
+                            accountFee.type,
+                            accountDetails
+                        );
+                        
+                        // Admin fee breakdown
+                        if (breakdown.adminFeeComponents.length > 0) {
+                            const adminSection = document.createElement('div');
+                            adminSection.className = 'fee-section';
+                            adminSection.innerHTML = '<h6>Admin Fee:</h6>';
+                            
+                            breakdown.adminFeeComponents.forEach(component => {
+                                const componentDiv = document.createElement('div');
+                                componentDiv.className = 'fee-component';
+                                componentDiv.innerHTML = `
+                                    <span class="component-description">${component.description}</span>
+                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
+                                `;
+                                adminSection.appendChild(componentDiv);
+                            });
+                            
+                            accountBreakdown.appendChild(adminSection);
+                        }
+                        
+                        // Expense fee breakdown
+                        if (breakdown.expenseFeeComponents.length > 0) {
+                            const expenseSection = document.createElement('div');
+                            expenseSection.className = 'fee-section';
+                            expenseSection.innerHTML = '<h6>Expense Recovery Fee:</h6>';
+                            
+                            breakdown.expenseFeeComponents.forEach(component => {
+                                const componentDiv = document.createElement('div');
+                                componentDiv.className = 'fee-component';
+                                componentDiv.innerHTML = `
+                                    <span class="component-description">${component.description}</span>
+                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
+                                `;
+                                expenseSection.appendChild(componentDiv);
+                            });
+                            
+                            accountBreakdown.appendChild(expenseSection);
+                        }
+                        
+                        // Total for this account
+                        const totalDiv = document.createElement('div');
+                        totalDiv.className = 'account-total';
+                        totalDiv.innerHTML = `
+                            <span>Account Total:</span>
+                            <span>${formatCurrency(accountFee.totalFee)}</span>
+                        `;
+                        accountBreakdown.appendChild(totalDiv);
+                        
+                        breakdownContainer.appendChild(accountBreakdown);
+                    });
+                }
+            });
+        } else {
+            // Expanded view - show fees by account
+            platformsData.forEach(platform => {
+                const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+                
+                // Add account rows
+                platform.accountFees.forEach(accountFee => {
+                    const row = document.createElement('tr');
+                    row.className = 'account-row';
+                    
+                    row.innerHTML = `
+                        <td style="padding-left: 40px;">${accountFee.name}</td>
+                        <td>${formatCurrency(accountFee.adminFee)}</td>
+                        <td>${formatCurrency(accountFee.expenseFee)}</td>
+                        <td>${formatCurrency(accountFee.totalFee)}</td>
+                    `;
+                    
+                    feeComparisonTable.appendChild(row);
+                });
+                
+                // Add platform total row
+                const totalRow = document.createElement('tr');
+                totalRow.className = `platform-total-row ${platform.isCurrent ? 'current-platform' : ''}`;
+                
+                totalRow.innerHTML = `
+                    <td style="font-weight: bold;">
+                        <span class="expand-icon" id="expand-${platformId}" onclick="toggleFeeDetails('${platformId}')" style="cursor: pointer; margin-right: 8px;">▶</span>
+                        ${platform.name}${platform.isCurrent ? ' (Selected)' : ''} Total
+                    </td>
+                    <td style="font-weight: bold;">${formatCurrency(platform.adminFee)}</td>
+                    <td style="font-weight: bold;">${formatCurrency(platform.expenseFee)}</td>
+                    <td style="font-weight: bold;">${formatCurrency(platform.totalFee)}</td>
+                `;
+                
+                feeComparisonTable.appendChild(totalRow);
+                
+                // Add expandable details row
+                const detailsRow = document.createElement('tr');
+                detailsRow.id = `details-${platformId}`;
+                detailsRow.className = 'fee-details-row hidden';
+                detailsRow.innerHTML = `
+                    <td colspan="4">
+                        <div class="fee-breakdown-container">
+                            <h4>Fee Calculation Breakdown</h4>
+                            <div id="breakdown-${platformId}"></div>
+                        </div>
+                    </td>
+                `;
+                feeComparisonTable.appendChild(detailsRow);
+                
+                // Populate breakdown details (same as merged view)
+                const breakdownContainer = document.getElementById(`breakdown-${platformId}`);
+                if (breakdownContainer && platform.accountFees.length > 0) {
+                    platform.accountFees.forEach(accountFee => {
+                        const accountBreakdown = document.createElement('div');
+                        accountBreakdown.className = 'account-breakdown';
+                        accountBreakdown.innerHTML = `<h5>${accountFee.name} (${formatCurrency(accountFee.balance)})</h5>`;
+                        
+                        // Get detailed breakdown
+                        const breakdown = calculateDetailedFeeBreakdown(
+                            platform.name,
+                            accountFee.balance,
+                            accountFee.type,
+                            accountDetails
+                        );
+                        
+                        // Admin fee breakdown
+                        if (breakdown.adminFeeComponents.length > 0) {
+                            const adminSection = document.createElement('div');
+                            adminSection.className = 'fee-section';
+                            adminSection.innerHTML = '<h6>Admin Fee:</h6>';
+                            
+                            breakdown.adminFeeComponents.forEach(component => {
+                                const componentDiv = document.createElement('div');
+                                componentDiv.className = 'fee-component';
+                                componentDiv.innerHTML = `
+                                    <span class="component-description">${component.description}</span>
+                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
+                                `;
+                                adminSection.appendChild(componentDiv);
+                            });
+                            
+                            accountBreakdown.appendChild(adminSection);
+                        }
+                        
+                        // Expense fee breakdown
+                        if (breakdown.expenseFeeComponents.length > 0) {
+                            const expenseSection = document.createElement('div');
+                            expenseSection.className = 'fee-section';
+                            expenseSection.innerHTML = '<h6>Expense Recovery Fee:</h6>';
+                            
+                            breakdown.expenseFeeComponents.forEach(component => {
+                                const componentDiv = document.createElement('div');
+                                componentDiv.className = 'fee-component';
+                                componentDiv.innerHTML = `
+                                    <span class="component-description">${component.description}</span>
+                                    <span class="component-amount">${formatCurrency(component.amount)}</span>
+                                `;
+                                expenseSection.appendChild(componentDiv);
+                            });
+                            
+                            accountBreakdown.appendChild(expenseSection);
+                        }
+                        
+                        // Total for this account
+                        const totalDiv = document.createElement('div');
+                        totalDiv.className = 'account-total';
+                        totalDiv.innerHTML = `
+                            <span>Account Total:</span>
+                            <span>${formatCurrency(accountFee.totalFee)}</span>
+                        `;
+                        accountBreakdown.appendChild(totalDiv);
+                        
+                        breakdownContainer.appendChild(accountBreakdown);
+                    });
+                }
+                
+                // Add separator row
+                const separatorRow = document.createElement('tr');
+                separatorRow.className = 'separator-row';
+                separatorRow.innerHTML = '<td colspan="4"></td>';
+                feeComparisonTable.appendChild(separatorRow);
+            });
+        }
         
         // Update IDPS and Super totals if needed
         const idpsTotalBalanceCell = document.getElementById('idps-total-balance');
@@ -1187,6 +1899,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('set-current-platform').addEventListener('change', toggleCurrentPlatformSelector);
         document.getElementById('platform-preference').addEventListener('change', toggleCustomText);
         document.getElementById('save-current-platforms').addEventListener('click', saveCurrentPlatforms);
+        
+        // Fee view mode toggle
+        document.getElementById('fee-view-mode').addEventListener('change', function() {
+            feeViewMode = this.value;
+            calculate();
+        });
         
         // Update download listeners
         document.getElementById('download-csv').addEventListener('click', downloadComparison);
