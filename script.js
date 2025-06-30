@@ -235,6 +235,15 @@ const productFees = {
             return 0;
         }
     },
+    "CFS Edge": {
+        adminFee: function(totalBalance, accountBalance, accountType) {
+            // This is a placeholder - actual calculation will use CFS Edge Investment or CFS Edge Super
+            return 0;
+        },
+        expenseFee: function(accountBalance) {
+            return 0;
+        }
+    },
     "CFS Edge Investment": {
         adminFee: function(totalBalance, accountBalance, accountType) {
             // Apply fee structure per account
@@ -284,7 +293,11 @@ function calculateDetailedFeeBreakdown(platform, accountBalance, accountType, al
     let platformToUse = platform;
     if (platform === "CFS Edge Super" && accountType === 'idps') {
         platformToUse = "CFS Edge Investment";
+    } else if (platform === "CFS Edge" && accountType === 'idps') {
+        platformToUse = "CFS Edge Investment";
     } else if (platform === "CFS Edge Investment" && accountType === 'super') {
+        platformToUse = "CFS Edge Super";
+    } else if (platform === "CFS Edge" && accountType === 'super') {
         platformToUse = "CFS Edge Super";
     } else if (platform === "Centric" && accountType === 'super') {
         platformToUse = "Centric Choice";
@@ -1412,8 +1425,8 @@ function calculatePlatformFees(platform, allAccounts) {
             // Use the appropriate platform for the account type
             if (platform === "CFS Edge Super" && account.balance > 0) {
                 platformToUse = "CFS Edge Investment";
-            } else if (platform === "CFS Edge Investment") {
-                // For CFS Edge Investment, use it for IDPS accounts
+            } else if (platform === "CFS Edge") {
+                // For CFS Edge, use CFS Edge Investment for IDPS accounts
                 platformToUse = "CFS Edge Investment";
             } else if (platform === "Centric One") {
                 // Centric One is only for Super accounts
@@ -1457,6 +1470,8 @@ function calculatePlatformFees(platform, allAccounts) {
             
             // Use the appropriate platform for the account type
             if (platform === "CFS Edge Investment" && account.balance > 0) {
+                platformToUse = "CFS Edge Super";
+            } else if (platform === "CFS Edge" && account.balance > 0) {
                 platformToUse = "CFS Edge Super";
             } else if (platform === "Centric") {
                 platformToUse = "Centric Choice";
@@ -1578,7 +1593,7 @@ function calculate() {
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
-                "CFS Edge Investment"
+                "CFS Edge"
             ];
         } else if (!hasIdps && hasSuper) {
             // Super only
@@ -1588,7 +1603,7 @@ function calculate() {
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
-                "CFS Edge Super"
+                "CFS Edge"
             ];
         } else if (hasIdps && hasSuper) {
             // Both IDPS and Super
@@ -1597,7 +1612,7 @@ function calculate() {
                 "BT Panorama (Compact Menu)",
                 "BT Panorama (Full Menu)",
                 "Portfolio Solutions",
-                "CFS Edge Investment" // Will use CFS Edge Super for Super accounts
+                "CFS Edge" // Will use CFS Edge Investment for IDPS and CFS Edge Super for Super accounts
             ];
         }
         
