@@ -873,7 +873,7 @@ function populatePlatformCheckboxes() {
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.id = `platform-checkbox-${platform.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '')}`;
+            checkbox.id = `platform-checkbox-${platform.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '').replace(/\//g, '-')}`;
             checkbox.className = 'platform-checkbox';
             checkbox.value = platform;
             checkbox.checked = currentPlatforms[platform] || false;
@@ -1255,7 +1255,7 @@ function downloadPDF() {
             }
             
             // Add underlying cost breakdown for each platform
-            const platformId = platformName.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+            const platformId = platformName.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '').replace(/\//g, '-');
             const detailsRow = document.getElementById(`details-${platformId}`);
             if (detailsRow) {
                 const breakdownContainer = detailsRow.querySelector(`#breakdown-${platformId}`);
@@ -1777,7 +1777,7 @@ function calculate() {
         
         // Add rows to table - merged view only
         platformsData.forEach(platform => {
-            const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+            const platformId = platform.name.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '').replace(/\//g, '-');
             const row = document.createElement('tr');
             row.className = platform.isCurrent ? 'current-platform' : '';
             
