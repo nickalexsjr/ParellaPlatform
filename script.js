@@ -94,8 +94,12 @@ const productFees = {
             
             return fee;
         },
-        expenseFee: function(accountBalance) {
-            // $95 fixed plus 0.03% of account balance, per account
+        expenseFee: function(accountBalance, accountType) {
+            // BT Panorama Investment expense recovery is up to $80 p.a. per IDPS account
+            if (accountType === 'idps') {
+                return 80;
+            }
+            // For Super accounts: $95 fixed plus 0.03% of account balance
             return 95 + (accountBalance * 0.0003);
         }
     },
@@ -124,8 +128,12 @@ const productFees = {
             
             return fee;
         },
-        expenseFee: function(accountBalance) {
-            // $95 fixed plus 0.03% of account balance, per account
+        expenseFee: function(accountBalance, accountType) {
+            // BT Panorama Investment expense recovery is up to $80 p.a. per IDPS account
+            if (accountType === 'idps') {
+                return 80;
+            }
+            // For Super accounts: $95 fixed plus 0.03% of account balance
             return 95 + (accountBalance * 0.0003);
         }
     },
@@ -631,16 +639,24 @@ function calculateDetailedFeeBreakdown(platform, accountBalance, accountType, al
     
     // Calculate expense fee breakdown
     if (platformToUse === "BT Panorama (Compact Menu)" || platformToUse === "BT Panorama (Full Menu)") {
-        breakdown.expenseFeeComponents.push({
-            description: "Fixed expense recovery fee",
-            amount: 95
-        });
-        const percentageFee = accountBalance * 0.0003;
-        breakdown.expenseFeeComponents.push({
-            description: `0.03% of balance ${formatCurrency(accountBalance)}`,
-            amount: percentageFee
-        });
-        breakdown.totalExpenseFee = 95 + percentageFee;
+        if (accountType === 'idps') {
+            breakdown.expenseFeeComponents.push({
+                description: "Up to $80 p.a. (exact amount confirmed in annual statement)",
+                amount: 80
+            });
+            breakdown.totalExpenseFee = 80;
+        } else {
+            breakdown.expenseFeeComponents.push({
+                description: "Fixed expense recovery fee",
+                amount: 95
+            });
+            const percentageFee = accountBalance * 0.0003;
+            breakdown.expenseFeeComponents.push({
+                description: `0.03% of balance ${formatCurrency(accountBalance)}`,
+                amount: percentageFee
+            });
+            breakdown.totalExpenseFee = 95 + percentageFee;
+        }
         
     } else if (platformToUse === "Centric Choice") {
         breakdown.expenseFeeComponents.push({
@@ -1093,67 +1109,6 @@ function downloadPDF() {
         
         let yPosition = 75;
         
-        // Client preference if set
-        const preferenceValue = document.getElementById('platform-preference').value;
-        if (preferenceValue !== 'standard') {
-            let preferenceText = '';
-            if (preferenceValue === 'no-online') {
-                preferenceText = 'The client has expressed a desire to use a simple platform without online complexity.';
-            } else if (preferenceValue === 'custom') {
-                const customText = document.getElementById('custom-preference-text').value;
-                preferenceText = customText || 'Custom preference (no details provided).';
-            }
-            
-            // Calculate required height for the preference box
-            const maxWidth = doc.internal.pageSize.getWidth() - 50;
-            doc.setFontSize(10);
-            const splitText = doc.splitTextToSize(preferenceText, maxWidth);
-            const requiredHeight = 15 + (splitText.length * 5);
-            
-            // Check if we need a new page
-            if (yPosition + requiredHeight > 270) {
-                doc.addPage();
-                yPosition = 20;
-            }
-            
-            // Draw background box
-            doc.setFillColor(248, 249, 250);
-            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, requiredHeight, 3, 3, 'F');
-            
-            // Add title
-            doc.setFontSize(12);
-            doc.setTextColor(40, 40, 40);
-            doc.text('Client Platform Preference:', 25, yPosition + 8);
-            
-            // Add preference text
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
-            
-            let textY = yPosition + 15;
-            splitText.forEach((line, index) => {
-                // Check if we need a new page mid-text
-                if (textY > 270) {
-                    doc.addPage();
-                    yPosition = 20;
-                    textY = 25;
-                    
-                    // Continue with remaining text
-                    doc.setFillColor(248, 249, 250);
-                    const remainingHeight = (splitText.length - index) * 5 + 10;
-                    doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, remainingHeight, 3, 3, 'F');
-                    doc.setFontSize(10);
-                    doc.setTextColor(60, 60, 60);
-                }
-                
-                // Clean the text to remove any special characters
-                const cleanLine = line.replace(/[^\x20-\x7E]/g, '');
-                doc.text(cleanLine, 25, textY);
-                textY += 5;
-            });
-            
-            yPosition = textY + 10;
-        }
-        
         // Add account tables if we have accounts
         if (idpsAccounts.length > 0 || superAccounts.length > 0) {
             doc.setFontSize(14);
@@ -1268,7 +1223,7 @@ function downloadPDF() {
         doc.text('Fee Comparison Results', 20, yPosition);
         yPosition += 8;
         
-        // Get fee data from the table
+        // Get fee data from the table - INCLUDING underlying costs
         const feeTableData = [];
         const originalTable = document.getElementById('fee-comparison-table');
         const originalRows = originalTable.querySelectorAll('tr');
@@ -1287,7 +1242,8 @@ function downloadPDF() {
             if (!platformNameEl) return;
             
             const rowData = [];
-            rowData.push(platformNameEl.textContent.trim());
+            const platformName = platformNameEl.textContent.trim();
+            rowData.push(platformName);
             cells.forEach((cell, idx) => {
                 if (idx > 0) rowData.push(cell.textContent.trim());
             });
@@ -1297,9 +1253,51 @@ function downloadPDF() {
             if (origRow.classList.contains('current-platform')) {
                 currentPlatformRows.push(feeTableData.length - 1);
             }
+            
+            // Add underlying cost breakdown for each platform
+            const platformId = platformName.replace(/\s+/g, '-').replace(/\(/g, '').replace(/\)/g, '');
+            const detailsRow = document.getElementById(`details-${platformId}`);
+            if (detailsRow) {
+                const breakdownContainer = detailsRow.querySelector(`#breakdown-${platformId}`);
+                if (breakdownContainer) {
+                    const accountBreakdowns = breakdownContainer.querySelectorAll('.account-breakdown');
+                    accountBreakdowns.forEach(accountBreakdown => {
+                        const accountName = accountBreakdown.querySelector('h5').textContent;
+                        const adminComponents = accountBreakdown.querySelectorAll('.fee-section')[0]?.querySelectorAll('.fee-component');
+                        const expenseComponents = accountBreakdown.querySelectorAll('.fee-section')[1]?.querySelectorAll('.fee-component');
+                        
+                        // Add account header
+                        feeTableData.push([`  ${accountName}`, '', '', '']);
+                        
+                        // Add admin fee components
+                        if (adminComponents && adminComponents.length > 0) {
+                            feeTableData.push([`    Admin Fee:`, '', '', '']);
+                            adminComponents.forEach(component => {
+                                const desc = component.querySelector('.component-description').textContent;
+                                const amount = component.querySelector('.component-amount').textContent;
+                                feeTableData.push([`      ${desc}`, amount, '', '']);
+                            });
+                        }
+                        
+                        // Add expense fee components
+                        if (expenseComponents && expenseComponents.length > 0) {
+                            feeTableData.push([`    Expense Recovery:`, '', '', '']);
+                            expenseComponents.forEach(component => {
+                                const desc = component.querySelector('.component-description').textContent;
+                                const amount = component.querySelector('.component-amount').textContent;
+                                feeTableData.push([`      ${desc}`, '', amount, '']);
+                            });
+                        }
+                        
+                        // Add account total
+                        const accountTotal = accountBreakdown.querySelector('.account-total span:last-child').textContent;
+                        feeTableData.push([`    Account Total:`, '', '', accountTotal]);
+                    });
+                }
+            }
         });
         
-        // Generate fee comparison table
+        // Generate fee comparison table with details
         doc.autoTable({
             startY: yPosition,
             head: [['Platform', 'Admin Fee ($)', 'Expense Recovery ($)', 'Total Fee ($)']],
@@ -1321,8 +1319,11 @@ function downloadPDF() {
                 2: { halign: 'right', cellWidth: 40 },
                 3: { halign: 'right', cellWidth: 40 }
             },
-            // Highlight current platform rows
+            // Highlight current platform rows and style sub-rows
             didParseCell: function(data) {
+                const rowText = data.row.raw[0];
+                
+                // Check if it's a current platform (main row)
                 if (currentPlatformRows.includes(data.row.index)) {
                     data.cell.styles.fillColor = [226, 240, 217]; // Light green
                     data.cell.styles.fontStyle = 'bold';
@@ -1330,6 +1331,22 @@ function downloadPDF() {
                     if (data.column.index === 0) {
                         data.cell.styles.lineWidth = { left: 0.5 };
                         data.cell.styles.lineColor = { left: [112, 173, 71] }; // Green
+                    }
+                }
+                
+                // Style sub-rows (indented rows)
+                if (rowText.startsWith('  ')) {
+                    data.cell.styles.fontSize = 9;
+                    data.cell.styles.textColor = [60, 60, 60];
+                    
+                    if (rowText.startsWith('    ') && !rowText.includes('Account Total:')) {
+                        data.cell.styles.fontSize = 8;
+                        data.cell.styles.textColor = [100, 100, 100];
+                    }
+                    
+                    if (rowText.includes('Account Total:')) {
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.textColor = [40, 40, 40];
                     }
                 }
             },
@@ -1417,6 +1434,73 @@ function downloadPDF() {
             // Add a bit of spacing between notes
             yPosition += 1;
         });
+        
+        // Client preference at the end (moved from earlier in the document)
+        const preferenceValue = document.getElementById('platform-preference').value;
+        if (preferenceValue !== 'standard') {
+            // Check if we need a new page
+            if (yPosition > 240) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            yPosition += 10; // Add some spacing before preference section
+            
+            let preferenceText = '';
+            if (preferenceValue === 'no-online') {
+                preferenceText = 'The client has expressed a desire to use a simple platform without online complexity.';
+            } else if (preferenceValue === 'custom') {
+                const customText = document.getElementById('custom-preference-text').value;
+                preferenceText = customText || 'Custom preference (no details provided).';
+            }
+            
+            // Calculate required height for the preference box
+            const maxWidth = doc.internal.pageSize.getWidth() - 50;
+            doc.setFontSize(10);
+            const splitText = doc.splitTextToSize(preferenceText, maxWidth);
+            const requiredHeight = 15 + (splitText.length * 5);
+            
+            // Check if we need a new page
+            if (yPosition + requiredHeight > 270) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            // Draw background box
+            doc.setFillColor(248, 249, 250);
+            doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, requiredHeight, 3, 3, 'F');
+            
+            // Add title
+            doc.setFontSize(12);
+            doc.setTextColor(40, 40, 40);
+            doc.text('Client Platform Preference:', 25, yPosition + 8);
+            
+            // Add preference text
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            
+            let textY = yPosition + 15;
+            splitText.forEach((line, index) => {
+                // Check if we need a new page mid-text
+                if (textY > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                    textY = 25;
+                    
+                    // Continue with remaining text
+                    doc.setFillColor(248, 249, 250);
+                    const remainingHeight = (splitText.length - index) * 5 + 10;
+                    doc.roundedRect(20, yPosition, doc.internal.pageSize.getWidth() - 40, remainingHeight, 3, 3, 'F');
+                    doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
+                }
+                
+                // Clean the text to remove any special characters
+                const cleanLine = line.replace(/[^\x20-\x7E]/g, '');
+                doc.text(cleanLine, 25, textY);
+                textY += 5;
+            });
+        }
         
         // Add disclaimer at the bottom of the last page
         const disclaimer = 'This comparison is for informational purposes only and should not be considered as financial advice.';
